@@ -21,12 +21,7 @@ public class UdeskPackage implements ReactPackage {
                 // Modules from third-party
                 new UdeskModule(reactContext),
         });
-    }
-
-    @Override
-    public List<Class<? extends JavaScriptModule>> createJSModules() {
-        return Collections.emptyList();
-    }
+   }
 
     @Override
     public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {

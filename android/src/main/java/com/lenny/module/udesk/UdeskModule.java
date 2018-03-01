@@ -16,6 +16,7 @@ import com.facebook.react.bridge.WritableMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import cn.udesk.UdeskConst;
 import cn.udesk.UdeskSDKManager;
@@ -34,12 +35,12 @@ class UdeskModule extends ReactContextBaseJavaModule {
         super(reactContext);
         mReactContext = reactContext;
     }
-
+    
     @Override
     public String getName() {
         return "UdeskAPI";
     }
-
+    
     @ReactMethod
     public void initSDK(String appDomain, String appKey, String appId) {
         this.appDomain = appDomain;
@@ -48,39 +49,39 @@ class UdeskModule extends ReactContextBaseJavaModule {
         UdeskSDKManager.getInstance().initApiKey(mReactContext.getApplicationContext(), this.appDomain, this.appKey, this.appId);
         UdeskConfig.udeskTitlebarBgResId = cn.udesk.R.color.udesk_titlebar_bg;
     }
-
-//     @ReactMethod
-//     public void setUserInfo(String token, String name, String email, String phone, String description) {
-// //        initSDK();
-//
-//         Map<String, String> info = new HashMap<>();
-//         if (token == null) {
-//             token = UUID.randomUUID().toString();
-//         }
-//         //token 必填
-//         info.put(UdeskConst.UdeskUserInfo.USER_SDK_TOKEN, token);
-//         //以下信息是可选
-//         if (name != null) {
-//             info.put(UdeskConst.UdeskUserInfo.NICK_NAME, name);
-//         }
-//         if (email != null) {
-//             info.put(UdeskConst.UdeskUserInfo.EMAIL, email);
-//         }
-//         if (phone != null) {
-//             info.put(UdeskConst.UdeskUserInfo.CELLPHONE, phone);
-//         }
-//         if (description != null) {
-//             info.put(UdeskConst.UdeskUserInfo.DESCRIPTION, description);
-//         }
-//         UdeskSDKManager.getInstance().setUserInfo(mReactContext.getApplicationContext(), token, info);
-//     }
-
+    
+    //     @ReactMethod
+    //     public void setUserInfo(String token, String name, String email, String phone, String description) {
+    // //        initSDK();
+    //
+    //         Map<String, String> info = new HashMap<>();
+    //         if (token == null) {
+    //             token = UUID.randomUUID().toString();
+    //         }
+    //         //token 必填
+    //         info.put(UdeskConst.UdeskUserInfo.USER_SDK_TOKEN, token);
+    //         //以下信息是可选
+    //         if (name != null) {
+    //             info.put(UdeskConst.UdeskUserInfo.NICK_NAME, name);
+    //         }
+    //         if (email != null) {
+    //             info.put(UdeskConst.UdeskUserInfo.EMAIL, email);
+    //         }
+    //         if (phone != null) {
+    //             info.put(UdeskConst.UdeskUserInfo.CELLPHONE, phone);
+    //         }
+    //         if (description != null) {
+    //             info.put(UdeskConst.UdeskUserInfo.DESCRIPTION, description);
+    //         }
+    //         UdeskSDKManager.getInstance().setUserInfo(mReactContext.getApplicationContext(), token, info);
+    //     }
+    
     @ReactMethod
     public void setUserInfo(final ReadableMap options, final Callback callback) {
         Map<String, String> info = new HashMap<>();
-        if (!hasAndNotEmpty(options, "sdk_token")) {
-            return;
-        }
+        //        if (!hasAndNotEmpty(options, "sdk_token")) {
+        //            return;
+        //        }
         String token = options.getString("sdk_token");
         if (token == null) {
             token = UUID.randomUUID().toString();
@@ -100,7 +101,16 @@ class UdeskModule extends ReactContextBaseJavaModule {
         if (hasAndNotEmpty(options, "description")) {
             info.put(UdeskConst.UdeskUserInfo.DESCRIPTION, options.getString("description"));
         }
-        ReadableMap field = options.getMap("customer_field");
+        if (hasAndNotEmpty(options, "icon")) {
+            UdeskSDKManager.getInstance().setCustomerUrl(options.getString("icon"));
+        }
+        ReadableMap field;
+        try {
+            field = options.getMap("customer_field");
+        }catch (Exception e){
+            field=null;
+        }
+        
         if (field!= null && field.hasKey("TextField_10075")) {
             Map<String, String> fields = new HashMap<>();
             fields.put("TextField_10075", field.getString("TextField_10075"));
@@ -109,7 +119,7 @@ class UdeskModule extends ReactContextBaseJavaModule {
             UdeskSDKManager.getInstance().setUserInfo(mReactContext.getApplicationContext(), token, info);
         }
     }
-
+    
     @ReactMethod
     public void setUpdateUserinfo(String name, String email, String phone, String description) {
         Map<String, String> info = new HashMap<>();
@@ -127,12 +137,12 @@ class UdeskModule extends ReactContextBaseJavaModule {
         }
         UdeskSDKManager.getInstance().setUpdateUserinfo(info);
     }
-
+    
     @ReactMethod
     public void entryChat() {
         UdeskSDKManager.getInstance().entryChat(mReactContext.getApplicationContext());
     }
-
+    
     // @ReactMethod
     // public void createCommodity (String title, String description, String imageUrl, String productUrl) { // 都是必传的
     //     UdeskCommodityItem item = new UdeskCommodityItem();
@@ -143,7 +153,7 @@ class UdeskModule extends ReactContextBaseJavaModule {
     //     UdeskSDKManager.getInstance().setCommodity(item);
     //     UdeskSDKManager.getInstance().toLanuchChatAcitvity(mReactContext.getApplicationContext());
     // }
-
+    
     @ReactMethod
     public void createCommodity (final ReadableMap options, final Callback callback) { // 都是必传的（productDetail 可选）
         cleanResponse();
@@ -169,13 +179,13 @@ class UdeskModule extends ReactContextBaseJavaModule {
         UdeskSDKManager.getInstance().setCommodity(item);
         UdeskSDKManager.getInstance().toLanuchChatAcitvity(mReactContext.getApplicationContext());
     }
-
+    
     @ReactMethod
     public void getMsgCount(Callback callback) {
         int unreadMsg = UdeskSDKManager.getInstance().getCurrentConnectUnReadMsgCount();
         callback.invoke(unreadMsg);
     }
-
+    
     public static @NonNull boolean hasAndNotEmpty(@NonNull final ReadableMap target,
                                                   @NonNull final String key)
     {
@@ -183,28 +193,29 @@ class UdeskModule extends ReactContextBaseJavaModule {
         {
             return false;
         }
-
+        
         final String value = target.getString(key);
-
+        
         return !TextUtils.isEmpty(value);
     }
-
+    
     public void cleanResponse() {
         response = Arguments.createMap();
     }
-
+    
     public void invokeError(@NonNull final Callback callback,
                             @NonNull final String error) {
         cleanResponse();
         response.putString("error", error);
         invokeResponse(callback);
     }
-
+    
     public void invokeResponse(@NonNull final Callback callback) {
         if (callback == null) {
             return;
         }
         callback.invoke(response);
     }
-
+    
 }
+

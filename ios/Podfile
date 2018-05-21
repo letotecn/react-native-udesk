@@ -6,5 +6,5 @@ target 'RNUdesk' do
   # use_frameworks!
 
   # Pods for RNUdesk
-pod 'UdeskSDK'
+
 end

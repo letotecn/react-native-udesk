@@ -38,7 +38,7 @@ class UdeskModule extends ReactContextBaseJavaModule {
     
     @Override
     public String getName() {
-        return "UdeskAPI";
+        return "RNUdesk";
     }
     
     @ReactMethod

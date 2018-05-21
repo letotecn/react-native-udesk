@@ -2,4 +2,4 @@ import {
   NativeModules,
 } from 'react-native';
 
-export default NativeModules.UdeskAPI;
+export default NativeModules.RNUdesk;

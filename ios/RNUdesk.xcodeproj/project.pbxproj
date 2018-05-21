@@ -7,7 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AE51B388D1FB111E21F468C6 /* libPods-RNUdesk.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A2311654033FB73DCB302A9 /* libPods-RNUdesk.a */; };
 		B3E7B58A1CC2AC0600A0062D /* RNUdesk.m in Sources */ = {isa = PBXBuildFile; fileRef = B3E7B5891CC2AC0600A0062D /* RNUdesk.m */; };
+		CE43352320B27B2D0030FE69 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43352220B27B2D0030FE69 /* libz.tbd */; };
+		CE43352520B27B380030FE69 /* libxml2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43352420B27B380030FE69 /* libxml2.tbd */; };
+		CE43352720B27B450030FE69 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43352620B27B450030FE69 /* libresolv.tbd */; };
+		CE43352920B27B550030FE69 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43352820B27B550030FE69 /* libsqlite3.tbd */; };
+		CE43352B20B27B650030FE69 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43352A20B27B650030FE69 /* WebKit.framework */; };
+		CE43352D20B27B6F0030FE69 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43352C20B27B6F0030FE69 /* MapKit.framework */; };
+		CE43352F20B27B7E0030FE69 /* AssetsLibrary.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43352E20B27B7D0030FE69 /* AssetsLibrary.framework */; };
+		CE43353120B27B8D0030FE69 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43353020B27B8D0030FE69 /* ImageIO.framework */; };
+		CE43353320B27B970030FE69 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43353220B27B970030FE69 /* Accelerate.framework */; };
+		CE43353520B27BA20030FE69 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE43353420B27BA20030FE69 /* MediaPlayer.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,8 +35,21 @@
 
 /* Begin PBXFileReference section */
 		134814201AA4EA6300B7C361 /* libRNUdesk.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRNUdesk.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		356DF1DCAFE311A50ABE499F /* Pods-RNUdesk.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RNUdesk.release.xcconfig"; path = "Pods/Target Support Files/Pods-RNUdesk/Pods-RNUdesk.release.xcconfig"; sourceTree = "<group>"; };
+		3C40FDBFF1F2071D392588D5 /* Pods-RNUdesk.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RNUdesk.debug.xcconfig"; path = "Pods/Target Support Files/Pods-RNUdesk/Pods-RNUdesk.debug.xcconfig"; sourceTree = "<group>"; };
+		7A2311654033FB73DCB302A9 /* libPods-RNUdesk.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-RNUdesk.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B3E7B5881CC2AC0600A0062D /* RNUdesk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RNUdesk.h; sourceTree = "<group>"; };
 		B3E7B5891CC2AC0600A0062D /* RNUdesk.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RNUdesk.m; sourceTree = "<group>"; };
+		CE43352220B27B2D0030FE69 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+		CE43352420B27B380030FE69 /* libxml2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libxml2.tbd; path = usr/lib/libxml2.tbd; sourceTree = SDKROOT; };
+		CE43352620B27B450030FE69 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
+		CE43352820B27B550030FE69 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
+		CE43352A20B27B650030FE69 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		CE43352C20B27B6F0030FE69 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
+		CE43352E20B27B7D0030FE69 /* AssetsLibrary.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AssetsLibrary.framework; path = System/Library/Frameworks/AssetsLibrary.framework; sourceTree = SDKROOT; };
+		CE43353020B27B8D0030FE69 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
+		CE43353220B27B970030FE69 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		CE43353420B27BA20030FE69 /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,6 +57,17 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE43353520B27BA20030FE69 /* MediaPlayer.framework in Frameworks */,
+				CE43353320B27B970030FE69 /* Accelerate.framework in Frameworks */,
+				CE43353120B27B8D0030FE69 /* ImageIO.framework in Frameworks */,
+				CE43352F20B27B7E0030FE69 /* AssetsLibrary.framework in Frameworks */,
+				CE43352D20B27B6F0030FE69 /* MapKit.framework in Frameworks */,
+				CE43352B20B27B650030FE69 /* WebKit.framework in Frameworks */,
+				CE43352920B27B550030FE69 /* libsqlite3.tbd in Frameworks */,
+				CE43352720B27B450030FE69 /* libresolv.tbd in Frameworks */,
+				CE43352520B27B380030FE69 /* libxml2.tbd in Frameworks */,
+				CE43352320B27B2D0030FE69 /* libz.tbd in Frameworks */,
+				AE51B388D1FB111E21F468C6 /* libPods-RNUdesk.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +88,36 @@
 				B3E7B5881CC2AC0600A0062D /* RNUdesk.h */,
 				B3E7B5891CC2AC0600A0062D /* RNUdesk.m */,
 				134814211AA4EA7D00B7C361 /* Products */,
+				CE43352120B27B2C0030FE69 /* Frameworks */,
+				903C8973214C725357C54089 /* Pods */,
 			);
+			sourceTree = "<group>";
+		};
+		903C8973214C725357C54089 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				3C40FDBFF1F2071D392588D5 /* Pods-RNUdesk.debug.xcconfig */,
+				356DF1DCAFE311A50ABE499F /* Pods-RNUdesk.release.xcconfig */,
+			);
+			name = Pods;
+			sourceTree = "<group>";
+		};
+		CE43352120B27B2C0030FE69 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CE43353420B27BA20030FE69 /* MediaPlayer.framework */,
+				CE43353220B27B970030FE69 /* Accelerate.framework */,
+				CE43353020B27B8D0030FE69 /* ImageIO.framework */,
+				CE43352E20B27B7D0030FE69 /* AssetsLibrary.framework */,
+				CE43352C20B27B6F0030FE69 /* MapKit.framework */,
+				CE43352A20B27B650030FE69 /* WebKit.framework */,
+				CE43352820B27B550030FE69 /* libsqlite3.tbd */,
+				CE43352620B27B450030FE69 /* libresolv.tbd */,
+				CE43352420B27B380030FE69 /* libxml2.tbd */,
+				CE43352220B27B2D0030FE69 /* libz.tbd */,
+				7A2311654033FB73DCB302A9 /* libPods-RNUdesk.a */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -63,9 +127,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 58B511EF1A9E6C8500147676 /* Build configuration list for PBXNativeTarget "RNUdesk" */;
 			buildPhases = (
+				F9B324A5D106C381AEC20AA1 /* [CP] Check Pods Manifest.lock */,
 				58B511D71A9E6C8500147676 /* Sources */,
 				58B511D81A9E6C8500147676 /* Frameworks */,
 				58B511D91A9E6C8500147676 /* CopyFiles */,
+				AC56FCCFD81BE52A2256564C /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -106,6 +172,39 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		AC56FCCFD81BE52A2256564C /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-RNUdesk/Pods-RNUdesk-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		F9B324A5D106C381AEC20AA1 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_ROOT}/../Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		58B511D71A9E6C8500147676 /* Sources */ = {
@@ -202,9 +301,10 @@
 		};
 		58B511F01A9E6C8500147676 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3C40FDBFF1F2071D392588D5 /* Pods-RNUdesk.debug.xcconfig */;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
-				"$(inherited)",
+					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					"$(SRCROOT)/../../../React/**",
 					"$(SRCROOT)/../../react-native/React/**",
@@ -218,6 +318,7 @@
 		};
 		58B511F11A9E6C8500147676 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 356DF1DCAFE311A50ABE499F /* Pods-RNUdesk.release.xcconfig */;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",

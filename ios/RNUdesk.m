@@ -23,6 +23,13 @@ RCT_EXPORT_METHOD(initUdeskManager:(NSString *)domain appKey:(NSString *)appKey 
     [UdeskManager initWithOrganization:organization customer:customer];
 }
 
+RCT_EXPORT_METHOD(updateCustomer:(NSDictionary *)usertInfo) {
+    UdeskCustomer *customer = [UdeskCustomer new];
+    customer.sdkToken = usertInfo[@"id"];
+    customer.nickName = usertInfo[@"nickname"];
+    [UdeskManager updateCustomer:customer];
+}
+
 RCT_EXPORT_METHOD(entryChat) {
     //使用push
     UdeskSDKManager *chat = [[UdeskSDKManager alloc] initWithSDKStyle:[UdeskSDKStyle defaultStyle]];
@@ -30,5 +37,7 @@ RCT_EXPORT_METHOD(entryChat) {
     //使用present
     [chat presentUdeskInViewController: [UIApplication sharedApplication].keyWindow.rootViewController completion:nil];
 }
+
+
 @end
 

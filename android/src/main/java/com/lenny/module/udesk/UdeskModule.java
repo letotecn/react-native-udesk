@@ -104,20 +104,10 @@ class UdeskModule extends ReactContextBaseJavaModule {
         if (hasAndNotEmpty(options, "icon")) {
             UdeskSDKManager.getInstance().setCustomerUrl(options.getString("icon"));
         }
-        ReadableMap field;
-        try {
-            field = options.getMap("customer_field");
-        }catch (Exception e){
-            field=null;
-        }
-        
-        if (field!= null && field.hasKey("TextField_10075")) {
-            Map<String, String> fields = new HashMap<>();
-            fields.put("TextField_10075", field.getString("TextField_10075"));
-            UdeskSDKManager.getInstance().setUserInfo(mReactContext.getApplicationContext(), token, info, fields);
-        } else {
-            UdeskSDKManager.getInstance().setUserInfo(mReactContext.getApplicationContext(), token, info);
-        }
+
+        Map<String, String> fields = new HashMap<>();
+        fields.put("TextField_84621", token);
+        UdeskSDKManager.getInstance().setUserInfo(mReactContext.getApplicationContext(), token, info, fields);
     }
     
     @ReactMethod

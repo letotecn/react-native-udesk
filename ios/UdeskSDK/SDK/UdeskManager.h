@@ -2,7 +2,7 @@
 //  UdeskManager.h
 //  UdeskSDK
 //
-//  Version: 3.9.2
+//  Version: 4.3.1
 //
 //  Created by Udesk on 16/1/12.
 //  Copyright © 2016年 Udesk. All rights reserved.
@@ -14,16 +14,6 @@
 #import "UdeskSetting.h"
 #import "UdeskCustomer.h"
 #import "UdeskOrganization.h"
-
-typedef void (^UDUploadProgressHandler)(NSString *key, float percent);
-
-// 排队放弃类型枚举
-typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
-    /** 直接从排列中清除 */
-    UdeskForceQuit,
-    /** 标记放弃 */
-    UdeskMark
-};
 
 /**
  *  Udesk客服系统当前有新消息，开发者可注册该通知接受未读消息，显示小红点未读标识
@@ -76,6 +66,11 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
  */
 - (void)fetchSessionMessages:(NSString *)sessionId;
 
+/**
+ 请求客服信息，创建会话
+ */
+- (void)fetchAgentAgainCreateSession;
+
 @end
 
 
@@ -91,33 +86,46 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
                     customer:(UdeskCustomer *)customer;
 
 /**
- 更新客户信息
+    更新客户信息
 
- @param customer 客户model
+ *  @param customer 客户model
+ *  @param completion 回调信息
  */
-+ (void)updateCustomer:(UdeskCustomer *)customer;
++ (void)updateCustomer:(UdeskCustomer *)customer completion:(void(^)(NSError *error))completion;
 
 /**
  *  获取后台分配的客服信息
  *
+ *  @param preSessionId 无消息会话Id
+ *  @param preSessionMessage 无消息会话消息
  *  @param completion 回调客服信息
  */
-+ (void)requestRandomAgent:(void (^)(UdeskAgent *agent, NSError *error))completion;
++ (void)requestRandomAgentWithPreSessionId:(NSNumber *)preSessionId
+                         preSessionMessage:(UdeskMessage *)preSessionMessage
+                                completion:(void(^)(UdeskAgent *agentModel,NSError *error))completion;
 /**
  *  指定分配客服
  *
  *  @param agentId    客服id
+ *  @param preSessionId 无消息会话Id
+ *  @param preSessionMessage 无消息会话消息
  *  @param completion 完成之后回调
  */
 + (void)scheduledAgentId:(NSString *)agentId
+            preSessionId:(NSNumber *)preSessionId
+       preSessionMessage:(UdeskMessage *)preSessionMessage
               completion:(void (^) (UdeskAgent *agent, NSError *error))completion;
 /**
  *  指定分配客服组
  *
  *  @param groupId    客服组id
+ *  @param preSessionId 无消息会话Id
+ *  @param preSessionMessage 无消息会话消息
  *  @param completion 完成之后回调
  */
 + (void)scheduledGroupId:(NSString *)groupId
+            preSessionId:(NSNumber *)preSessionId
+       preSessionMessage:(UdeskMessage *)preSessionMessage
               completion:(void (^) (UdeskAgent *agent, NSError *error))completion;
 /**
  * 根据时间从本地数据库获取历史消息
@@ -151,7 +159,7 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
 /**
  *  将 SDK 本地数据库中的消息都删除
  */
-+ (void)removeAllMessagesFromDatabaseWithCompletion:(void (^)(BOOL success, NSError *error))completion;
++ (void)removeAllMessagesFromDatabase;
 
 /**
  *  接收消息代理
@@ -187,8 +195,8 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
  *  @param completion 发送回调
  */
 + (void)sendMessage:(UdeskMessage *)message
-           progress:(UDUploadProgressHandler)progress
-         completion:(void (^) (UdeskMessage *message))completion;
+           progress:(void(^)(float percent))progress
+         completion:(void(^)(UdeskMessage *message))completion;
 
 /**
  * 将用户正在输入的内容，提供给客服查看。该接口没有调用限制，但每1秒内只会向服务器发送一次数据
@@ -236,23 +244,9 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
 + (NSURL *)getSubmitTicketURL;
 
 /**
- *  获取机器人URL
- *
- *  @return 机器人URL
- */
-+ (NSURL *)getRobotURL;
-
-/**
- * 获取后台配置的机器人URL
+ * 获取后台配置的机器人URL (开发者不需要调用此接口)
  */
 + (NSURL *)getServerRobotURLWithBaseURL:(NSString *)url;
-
-/**
- *  异步获取
- *
- *  @param completion 回调机器人URL
- */
-+ (void)getRobotURL:(void(^)(NSURL *robotUrl))completion;
 
 /**
  *  获取客服注册的Udesk域名
@@ -299,6 +293,15 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
                    completion:(void (^)(id responseObject, NSError *error))completion;
 
 /**
+ 提交满意度调查
+
+ @param parameters 需要的参数
+ @param completion 回调结果
+ */
++ (void)submitSurveyWithParameters:(NSDictionary *)parameters
+                        completion:(void(^)(NSError *error))completion;
+
+/**
  *  检查是否已经提交过满意度
  *
  *  @param agentId    满意度调查的客服
@@ -329,15 +332,17 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
  *  在服务端创建用户。（开发者无需调用此函数）
  *
  *  @param completion 成功信息回调
+ *  @param preSessionEnbaleCallback 开启了无消息对话过滤
  */
-+ (void)createServerCustomerCompletion:(void (^)(UdeskCustomer *customer, NSError *error))completion;
++ (void)createServerCustomerCompletion:(void (^)(UdeskCustomer *customer, NSError *error))completion
+              preSessionEnbaleCallback:(void(^)(UdeskCustomer *customer, NSString *preSessionTitle))preSessionEnbaleCallback;
 
 /**
  在机器人页面创建用户
 
  @param completion 完成回调
  */
-+ (void)createCustomerForRobot:(void (^)(BOOL success, NSError *error))completion;
++ (void)createCustomerForRobot:(void (^)(NSError *error))completion;
 
 /**
  开始推送
@@ -373,7 +378,7 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
 
  @param quiteType 放弃排队类型
  */
-+ (void)quitQueueWithType:(UDQuitQueueType)quiteType;
++ (void)quitQueueWithType:(NSString *)quiteType;
 
 /**
  获取客服工单回复
@@ -393,6 +398,26 @@ typedef NS_ENUM(NSUInteger, UDQuitQueueType) {
  @param completion 完成回调
  */
 + (void)fetchServersMessageWithSessionId:(NSString *)sessionId
-                              completion:(void(^)(void))completion;
+                              completion:(void(^)(NSError *error, NSArray *msgList))completion;
+
+/**
+ 无消息会话
+
+ @param completion 完成回调
+ */
++ (void)createPreSessionWithAgentId:(NSString *)agentId
+                            groupId:(NSString *)groupId
+                         completion:(void(^)(NSNumber *preSessionId,NSError *error))completion;
+
+/**
+ 排队发送消息
+
+ @param message 消息
+ @param progress 进度
+ @param completion 完成回调
+ */
++ (void)sendQueueMessage:(UdeskMessage *)message
+                progress:(void(^)(float percent))progress
+              completion:(void (^)(UdeskMessage *message,NSString *resultMsg))completion;
 
 @end

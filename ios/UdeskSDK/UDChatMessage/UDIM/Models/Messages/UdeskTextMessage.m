@@ -7,11 +7,13 @@
 //
 
 #import "UdeskTextMessage.h"
-#import "UdeskTools.h"
+#import "UdeskSDKUtil.h"
 #import "UdeskSDKConfig.h"
 #import "UdeskStringSizeUtil.h"
 #import <CoreText/CoreText.h>
 #import "UdeskTextCell.h"
+#import "UdeskBundleUtils.h"
+#import "UDTTTAttributedLabel.h"
 
 /** 聊天气泡和其中的文字水平间距 */
 const CGFloat kUDBubbleToTextHorizontalSpacing = 10.0;
@@ -28,6 +30,8 @@ const CGFloat kUDTextMendSpacing = 2.0;
 @property (nonatomic, strong, readwrite) NSDictionary *cellTextAttributes;
 /** 消息的文字 */
 @property (nonatomic, copy  , readwrite) NSAttributedString *cellText;
+
+@property (nonatomic, strong) UDTTTAttributedLabel *textLabelForHeightCalculation;
 
 @end
 
@@ -48,9 +52,13 @@ const CGFloat kUDTextMendSpacing = 2.0;
     @try {
         
         if (!self.message.content || [NSNull isEqual:self.message.content]) return;
-        if ([UdeskTools isBlankString:self.message.content]) return;
+        if ([UdeskSDKUtil isBlankString:self.message.content]) return;
         
         CGSize textSize = CGSizeMake(100, 50);
+        CGFloat spacing = ud_isIOS11 ? 0 : kUDTextMendSpacing;
+        if (ud_isIOS13) {
+            spacing = kUDTextMendSpacing;
+        }
         
         if (self.message.messageType == UDMessageContentTypeText ||
             self.message.messageType == UDMessageContentTypeLeaveMsg) {
@@ -59,34 +67,17 @@ const CGFloat kUDTextMendSpacing = 2.0;
             switch (self.message.messageFrom) {
                 case UDMessageTypeSending:{
                     
-                    //文本气泡frame
-                    self.bubbleFrame = CGRectMake(self.avatarFrame.origin.x-kUDArrowMarginWidth-kUDBubbleToTextHorizontalSpacing*2-kUDAvatarToBubbleSpacing-textSize.width, self.avatarFrame.origin.y, textSize.width+(kUDBubbleToTextHorizontalSpacing*3), textSize.height+(kUDBubbleToTextVerticalSpacing*2));
-                    //文本frame
-                    self.textFrame = CGRectMake(kUDBubbleToTextHorizontalSpacing, kUDBubbleToTextVerticalSpacing+kUDTextMendSpacing, textSize.width, textSize.height);
-                    //加载中frame
-                    self.loadingFrame = CGRectMake(self.bubbleFrame.origin.x-kUDBubbleToSendStatusSpacing-kUDSendStatusDiameter, self.bubbleFrame.origin.y+kUDCellBubbleToIndicatorSpacing, kUDSendStatusDiameter, kUDSendStatusDiameter);
-                    
-                    //加载失败frame
-                    self.failureFrame = self.loadingFrame;
-                    
+                    [self setSendFrameWithSize:textSize spacing:spacing];
                     break;
                 }
                 case UDMessageTypeReceiving:{
                     
-                    //接收文字气泡frame
-                    self.bubbleFrame = CGRectMake(self.avatarFrame.origin.x+kUDAvatarDiameter+kUDAvatarToBubbleSpacing, self.dateFrame.origin.y+self.dateFrame.size.height+kUDAvatarToVerticalEdgeSpacing, textSize.width+(kUDBubbleToTextHorizontalSpacing*3), textSize.height+(kUDBubbleToTextVerticalSpacing*2));
-                    //接收文字frame
-                    self.textFrame = CGRectMake(kUDBubbleToTextHorizontalSpacing+kUDArrowMarginWidth, kUDBubbleToTextVerticalSpacing+kUDTextMendSpacing, textSize.width, textSize.height);
-                    
+                    [self setReceiveFrameWithSize:textSize spacing:spacing];
                     break;
                 }
-                    
                 default:
                     break;
             }
-            
-            //cell高度
-            self.cellHeight = self.bubbleFrame.size.height+self.bubbleFrame.origin.y+kUDCellBottomMargin;
         }
         else if (self.message.messageType == UDMessageContentTypeRich) {
             
@@ -100,19 +91,60 @@ const CGFloat kUDTextMendSpacing = 2.0;
             }
         }
         
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            self.textLabelForHeightCalculation.attributedText = self.cellText;
+            CGSize labelSize = [self.textLabelForHeightCalculation sizeThatFits:CGSizeMake(UD_SCREEN_WIDTH>320?235:180, MAXFLOAT)];
+            
+            if (CGRectGetHeight(self.textFrame) < labelSize.height) {
+                if (self.message.messageFrom == UDMessageTypeSending) {
+                    [self setSendFrameWithSize:labelSize spacing:spacing];
+                }
+                else if (self.message.messageFrom == UDMessageTypeReceiving) {
+                    [self setReceiveFrameWithSize:labelSize spacing:spacing];
+                }
+            }
+        });
+        
     } @catch (NSException *exception) {
         NSLog(@"%@",exception);
     } @finally {
     }
 }
 
+- (void)setReceiveFrameWithSize:(CGSize)textSize spacing:(CGFloat)spacing {
+    
+    //接收文字气泡frame
+    CGFloat bubbleY = [UdeskSDKUtil isBlankString:self.message.nickName] ? CGRectGetMinY(self.avatarFrame) : CGRectGetMaxY(self.nicknameFrame)+kUDCellBubbleToIndicatorSpacing;
+    self.bubbleFrame = CGRectMake(self.avatarFrame.origin.x+kUDAvatarDiameter+kUDAvatarToBubbleSpacing, bubbleY, textSize.width+(kUDBubbleToTextHorizontalSpacing*3), textSize.height+(kUDBubbleToTextVerticalSpacing*2));
+    self.textFrame = CGRectMake(kUDBubbleToTextHorizontalSpacing+kUDArrowMarginWidth, kUDBubbleToTextVerticalSpacing+spacing, textSize.width, textSize.height);
+    //cell高度
+    self.cellHeight = self.bubbleFrame.size.height+self.bubbleFrame.origin.y+kUDCellBottomMargin;
+}
+
+- (void)setSendFrameWithSize:(CGSize)textSize spacing:(CGFloat)spacing {
+    
+    //文本气泡frame
+    self.bubbleFrame = CGRectMake(self.avatarFrame.origin.x-kUDArrowMarginWidth-kUDBubbleToTextHorizontalSpacing*2-kUDAvatarToBubbleSpacing-textSize.width, self.avatarFrame.origin.y, textSize.width+(kUDBubbleToTextHorizontalSpacing*3), textSize.height+(kUDBubbleToTextVerticalSpacing*2));
+    //文本frame
+    self.textFrame = CGRectMake(kUDBubbleToTextHorizontalSpacing, kUDBubbleToTextVerticalSpacing+spacing, textSize.width, textSize.height);
+    //加载中frame
+    self.loadingFrame = CGRectMake(self.bubbleFrame.origin.x-kUDBubbleToSendStatusSpacing-kUDSendStatusDiameter, self.bubbleFrame.origin.y+kUDCellBubbleToIndicatorSpacing, kUDSendStatusDiameter, kUDSendStatusDiameter);
+    //加载失败frame
+    self.failureFrame = self.loadingFrame;
+    //cell高度
+    self.cellHeight = self.bubbleFrame.size.height+self.bubbleFrame.origin.y+kUDCellBottomMargin;
+}
+
 - (void)setupRichText {
     
     CGSize richTextSize = [self setRichAttributedCellText:self.message.content messageFrom:self.message.messageFrom];
     //接收文字气泡frame
-    self.bubbleFrame = CGRectMake(self.avatarFrame.origin.x+kUDAvatarDiameter+kUDAvatarToBubbleSpacing, self.dateFrame.origin.y+self.dateFrame.size.height+kUDAvatarToVerticalEdgeSpacing, richTextSize.width+(kUDBubbleToTextHorizontalSpacing*3), richTextSize.height+(kUDBubbleToTextVerticalSpacing*2));
+    CGFloat bubbleY = [UdeskSDKUtil isBlankString:self.message.nickName] ? CGRectGetMinY(self.avatarFrame) : CGRectGetMaxY(self.nicknameFrame)+kUDCellBubbleToIndicatorSpacing;
+    self.bubbleFrame = CGRectMake(self.avatarFrame.origin.x+kUDAvatarDiameter+kUDAvatarToBubbleSpacing, bubbleY, richTextSize.width+(kUDBubbleToTextHorizontalSpacing*3), richTextSize.height+(kUDBubbleToTextVerticalSpacing*2));
     //接收文字frame
-    self.textFrame = CGRectMake(kUDBubbleToTextHorizontalSpacing+kUDArrowMarginWidth, kUDBubbleToTextVerticalSpacing, richTextSize.width, richTextSize.height);
+    CGFloat spacing = ud_isIOS13 ? kUDTextMendSpacing : 0;
+    self.textFrame = CGRectMake(kUDBubbleToTextHorizontalSpacing+kUDArrowMarginWidth, kUDBubbleToTextVerticalSpacing+spacing, richTextSize.width, richTextSize.height);
     
     //cell高度
     self.cellHeight = self.bubbleFrame.size.height+self.bubbleFrame.origin.y+kUDCellBottomMargin;
@@ -125,7 +157,7 @@ const CGFloat kUDTextMendSpacing = 2.0;
         NSMutableDictionary *richURLDictionary = [NSMutableDictionary dictionary];
         NSMutableArray *richContetnArray = [NSMutableArray array];
         
-        for (NSString *linkRegex in [UdeskSDKConfig sharedConfig].linkRegexs) {
+        for (NSString *linkRegex in [UdeskSDKUtil linkRegexs]) {
             
             NSRange range = [content rangeOfString:linkRegex options:NSRegularExpressionSearch];
             if (range.location != NSNotFound) {
@@ -142,7 +174,7 @@ const CGFloat kUDTextMendSpacing = 2.0;
         self.richURLDictionary = [NSDictionary dictionaryWithDictionary:richURLDictionary];
         
         NSMutableDictionary *numberDictionary = [NSMutableDictionary dictionary];
-        for (NSString *linkRegex in [UdeskSDKConfig sharedConfig].numberRegexs) {
+        for (NSString *linkRegex in [UdeskSDKUtil numberRegexs]) {
             
             NSRange range = [content rangeOfString:linkRegex options:NSNumericSearch|NSRegularExpressionSearch];
             if (range.location != NSNotFound) {
@@ -165,7 +197,7 @@ const CGFloat kUDTextMendSpacing = 2.0;
     
     @try {
         
-        if ([UdeskTools isBlankString:text]) {
+        if ([UdeskSDKUtil isBlankString:text]) {
             return CGSizeMake(50, 50);
         }
         
@@ -178,12 +210,12 @@ const CGFloat kUDTextMendSpacing = 2.0;
         = [[NSMutableDictionary alloc]
            initWithDictionary:@{
                                 NSParagraphStyleAttributeName : contentParagraphStyle,
-                                NSFontAttributeName : [UdeskSDKConfig sharedConfig].sdkStyle.messageContentFont
+                                NSFontAttributeName : [UdeskSDKConfig customConfig].sdkStyle.messageContentFont
                                 }];
         if (messageFrom == UDMessageTypeSending) {
-            [contentAttributes setObject:(__bridge id)[UdeskSDKConfig sharedConfig].sdkStyle.customerTextColor.CGColor forKey:(__bridge id)kCTForegroundColorAttributeName];
+            [contentAttributes setObject:(__bridge id)[UdeskSDKConfig customConfig].sdkStyle.customerTextColor.CGColor forKey:(__bridge id)kCTForegroundColorAttributeName];
         } else {
-            [contentAttributes setObject:(__bridge id)[UdeskSDKConfig sharedConfig].sdkStyle.agentTextColor.CGColor forKey:(__bridge id)kCTForegroundColorAttributeName];
+            [contentAttributes setObject:(__bridge id)[UdeskSDKConfig customConfig].sdkStyle.agentTextColor.CGColor forKey:(__bridge id)kCTForegroundColorAttributeName];
         }
         
         NSDictionary *cellTextAttributes = [[NSDictionary alloc] initWithDictionary:contentAttributes];
@@ -191,7 +223,7 @@ const CGFloat kUDTextMendSpacing = 2.0;
         
         CGSize textSize = [UdeskStringSizeUtil getSizeForAttributedText:self.cellText textWidth:UD_SCREEN_WIDTH>320?235:180];
         
-        if ([UdeskTools stringContainsEmoji:[self.cellText string]]) {
+        if ([UdeskSDKUtil stringContainsEmoji:[self.cellText string]]) {
             NSAttributedString *oneLineText = [[NSAttributedString alloc] initWithString:@"haha" attributes:cellTextAttributes];
             CGFloat oneLineTextHeight = [UdeskStringSizeUtil getHeightForAttributedText:oneLineText textWidth:UD_SCREEN_WIDTH>320?235:180];
             NSInteger textLines = ceil(textSize.height / oneLineTextHeight);
@@ -221,12 +253,12 @@ const CGFloat kUDTextMendSpacing = 2.0;
         NSMutableAttributedString *att = [[NSMutableAttributedString alloc] initWithAttributedString:self.cellText];
         NSRange range = NSMakeRange(0, self.cellText.string.length);
         // 设置字体大小
-        [att addAttribute:NSFontAttributeName value:[UdeskSDKConfig sharedConfig].sdkStyle.messageContentFont range:range];
+        [att addAttribute:NSFontAttributeName value:[UdeskSDKConfig customConfig].sdkStyle.messageContentFont range:range];
         // 设置颜色
         if (messageFrom == UDMessageTypeSending) {
-            [att addAttribute:NSForegroundColorAttributeName value:[UdeskSDKConfig sharedConfig].sdkStyle.customerTextColor range:range];
+            [att addAttribute:NSForegroundColorAttributeName value:[UdeskSDKConfig customConfig].sdkStyle.customerTextColor range:range];
         } else {
-            [att addAttribute:NSForegroundColorAttributeName value:[UdeskSDKConfig sharedConfig].sdkStyle.agentTextColor range:range];
+            [att addAttribute:NSForegroundColorAttributeName value:[UdeskSDKConfig customConfig].sdkStyle.agentTextColor range:range];
         }
 
         NSMutableParagraphStyle *contentParagraphStyle = [[NSMutableParagraphStyle alloc] init];
@@ -253,6 +285,14 @@ const CGFloat kUDTextMendSpacing = 2.0;
         NSLog(@"%@",exception);
     } @finally {
     }
+}
+
+- (UDTTTAttributedLabel *)textLabelForHeightCalculation {
+    if (!_textLabelForHeightCalculation) {
+        _textLabelForHeightCalculation = [UDTTTAttributedLabel new];
+        _textLabelForHeightCalculation.numberOfLines = 0;
+    }
+    return _textLabelForHeightCalculation;
 }
 
 - (UITableViewCell *)getCellWithReuseIdentifier:(NSString *)cellReuseIdentifer {

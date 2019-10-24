@@ -29,6 +29,8 @@ typedef NS_ENUM(NSInteger, UDMessageContentType) {
     UDMessageContentTypeLocation   = 10,//地理位置消息
     UDMessageContentTypeLeaveMsg   = 11,//离线留言消息
     UDMessageContentTypeVideoCall  = 12,//视频聊天
+    UDMessageContentTypeGoods      = 13,//商品消息
+    UDMessageContentTypeQueueEvent = 14,//排队事件消息
 };
 
 typedef NS_ENUM(NSInteger,UDMessageSendStatus) {
@@ -63,6 +65,8 @@ typedef NS_ENUM(NSInteger,UDMessageSendStatus) {
 @property (nonatomic, copy  ) NSString             *nickName;
 /** 语音时长 */
 @property (nonatomic, assign) CGFloat              voiceDuration;
+/** 视频时长 */
+@property (nonatomic, assign) CGFloat              videoDuration;
 /** 图片宽度 */
 @property (nonatomic, assign) CGFloat              width;
 /** 图片高度 */
@@ -83,5 +87,7 @@ typedef NS_ENUM(NSInteger,UDMessageSendStatus) {
 @property (nonatomic, copy  ) NSString             *imSubSessionId;
 /** 会话序号 */
 @property (nonatomic, assign) NSInteger            seqNum;
+/** 显示l留言按钮 */
+@property (nonatomic, assign) BOOL                 showLeaveMsgBtn;
 
 @end

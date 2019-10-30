@@ -1,25 +1,15 @@
 package cn.udesk.model;
 
+import cn.udesk.UdeskUtil;
+import udesk.core.utils.UdeskUtils;
+
 /**
  * Created by user on 2016/12/27.
  */
 
 public class SDKIMSetting {
 
-    //    {"code"=>"1000",
-//            "message"=>"success",
-//            "result"=>
-//        {"enable_im_group"=>false,
-//                "im_session_closed"=>false,
-//                "is_worktime"=>true,
-//                "has_robot"=>true,
-//                "enable_robot"=>false,
-//                "enable_sdk_robot"=>false,
-//                "enable_agent"=>false,
-//                "investigation_when_leave"=>false,
-//                "enable_web_im_feedback"=>false,
-//                "no_reply_hint"=>"对不起，当前无客户在线"}}
-    private int code;
+    private Object code;
     private Object message;
 
     //是否配置了引导页
@@ -38,14 +28,30 @@ public class SDKIMSetting {
     private Object investigation_when_leave;
     private Object enable_im_survey;
     //'msg', 'form'
-    private String leave_message_type;
+    private Object leave_message_type;
+    private Object vcall;
+    private Object vc_app_id;
+    private Object sdk_vcall;
+
+    private Object agora_app_id;
+    private Object server_url;
+    private Object vcall_token_url;
+    private Object im_survey_show_type;
+    private Object leave_message_guide;
+    private Object show_robot_times;
+    private Object  robot_name;
+
+//    "vcall":true,
+//            "vc_app_id":"fbcc5d3df6dfa25c418910a3611020eb",
+//            "sdk_vcall":false
 
 
     public String getLeave_message_type() {
-        return leave_message_type;
+
+        return UdeskUtils.objectToString(leave_message_type);
     }
 
-    public void setLeave_message_type(String leave_message_type) {
+    public void setLeave_message_type(Object leave_message_type) {
         this.leave_message_type = leave_message_type;
     }
 
@@ -60,11 +66,11 @@ public class SDKIMSetting {
         this.investigation_when_leave = investigation_when_leave;
     }
 
-    public int getCode() {
+    public Object getCode() {
         return code;
     }
 
-    public void setCode(int code) {
+    public void setCode(Object code) {
         this.code = code;
     }
 
@@ -156,6 +162,57 @@ public class SDKIMSetting {
         return "false";
     }
 
+    public Boolean getVcall() {
+        if (vcall instanceof Boolean) {
+            return (boolean) vcall;
+        }
+        return false;
+    }
+
+    public void setVcall(Object vcall) {
+        this.vcall = vcall;
+    }
+
+    public String getVc_app_id() {
+        if (vc_app_id instanceof String) {
+            return (String) vc_app_id;
+        }
+        return "";
+    }
+
+    public void setVc_app_id(Object vc_app_id) {
+        this.vc_app_id = vc_app_id;
+    }
+
+    public Boolean getSdk_vcall() {
+        if (sdk_vcall instanceof Boolean) {
+            return (boolean) sdk_vcall;
+        }
+        return false;
+    }
+
+    public void setSdk_vcall(Object sdk_vcall) {
+        this.sdk_vcall = sdk_vcall;
+    }
+
+    public String getAgora_app_id() {
+
+
+        return UdeskUtils.objectToString(agora_app_id);
+    }
+
+    public void setAgora_app_id(Object agora_app_id) {
+        this.agora_app_id = agora_app_id;
+    }
+
+    public String getServer_url() {
+        return UdeskUtils.objectToString(server_url);
+    }
+
+    public void setServer_url(Object server_url) {
+        this.server_url = server_url;
+    }
+
     public void setEnable_agent(Object enable_agent) {
         this.enable_agent = enable_agent;
     }
@@ -183,10 +240,7 @@ public class SDKIMSetting {
     }
 
     public String getNo_reply_hint() {
-        if (no_reply_hint instanceof String) {
-            return (String) no_reply_hint;
-        }
-        return "";
+        return UdeskUtils.objectToString(no_reply_hint);
     }
 
     public void setNo_reply_hint(Object no_reply_hint) {
@@ -194,13 +248,51 @@ public class SDKIMSetting {
     }
 
     public String getRobot() {
-        if (robot instanceof String) {
-            return (String) robot;
-        }
-        return "";
+
+        return UdeskUtils.objectToString(robot);
     }
 
     public void setRobot(Object robot) {
         this.robot = robot;
+    }
+
+    public String getVcall_token_url() {
+        return UdeskUtils.objectToString(vcall_token_url);
+    }
+
+    public void setVcall_token_url(Object vcall_token_url) {
+        this.vcall_token_url = vcall_token_url;
+    }
+
+    public String getIm_survey_show_type() {
+        return UdeskUtils.objectToString(im_survey_show_type);
+    }
+
+    public void setIm_survey_show_type(Object im_survey_show_type) {
+        this.im_survey_show_type = im_survey_show_type;
+    }
+
+    public String getLeave_message_guide() {
+        return UdeskUtils.objectToString(leave_message_guide);
+    }
+
+    public void setLeave_message_guide(Object leave_message_guide) {
+        this.leave_message_guide = leave_message_guide;
+    }
+
+    public Object getShow_robot_times() {
+        return show_robot_times;
+    }
+
+    public void setShow_robot_times(Object show_robot_times) {
+        this.show_robot_times = show_robot_times;
+    }
+
+    public Object getRobot_name() {
+        return robot_name;
+    }
+
+    public void setRobot_name(Object robot_name) {
+        this.robot_name = robot_name;
     }
 }

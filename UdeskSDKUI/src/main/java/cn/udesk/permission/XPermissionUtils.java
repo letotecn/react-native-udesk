@@ -2,7 +2,6 @@ package cn.udesk.permission;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
@@ -15,6 +14,12 @@ public class XPermissionUtils {
 
     private static int mRequestCode = -1;
     private static OnPermissionListener mOnPermissionListener;
+
+    public static  void  destory(){
+        if (mOnPermissionListener != null){
+            mOnPermissionListener = null;
+        }
+    }
 
     public interface OnPermissionListener {
 

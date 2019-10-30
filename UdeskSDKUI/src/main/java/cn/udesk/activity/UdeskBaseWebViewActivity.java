@@ -1,12 +1,13 @@
 package cn.udesk.activity;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.webkit.DownloadListener;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebSettings;
@@ -17,17 +18,13 @@ import android.widget.LinearLayout;
 import cn.udesk.R;
 import cn.udesk.widget.UdeskTitleBar;
 
-/**
- * Created by user on 2016/12/21.
- */
 
-public class UdeskBaseWebViewActivity extends Activity {
+public class UdeskBaseWebViewActivity extends UdeskBaseActivity {
 
     protected WebView mwebView;
-    private LinearLayout linearLayout;
+    protected LinearLayout linearLayout;
     protected UdeskTitleBar mTitlebar;
     protected UdeskWebChromeClient udeskWebChromeClient;
-
 
 
     @Override
@@ -49,7 +46,7 @@ public class UdeskBaseWebViewActivity extends Activity {
             mTitlebar = (UdeskTitleBar) findViewById(R.id.udesktitlebar);
             mwebView = new WebView(this);
             LinearLayout.LayoutParams param = new LinearLayout.LayoutParams(LinearLayout.
-                    LayoutParams.FILL_PARENT,LinearLayout.LayoutParams.FILL_PARENT);
+                    LayoutParams.FILL_PARENT, LinearLayout.LayoutParams.FILL_PARENT);
             mwebView.setLayoutParams(param);
             linearLayout.addView(mwebView);
             settingWebView();
@@ -58,7 +55,7 @@ public class UdeskBaseWebViewActivity extends Activity {
         }
     }
 
-    protected void setH5TitleListener(UdeskWebChromeClient.GetH5Title h5TitleListener){
+    protected void setH5TitleListener(UdeskWebChromeClient.GetH5Title h5TitleListener) {
         try {
             udeskWebChromeClient.setH5TitleListener(h5TitleListener);
         } catch (Exception e) {
@@ -66,7 +63,7 @@ public class UdeskBaseWebViewActivity extends Activity {
         }
     }
 
-    @SuppressLint("NewApi")
+    @SuppressLint({"NewApi", "SetJavaScriptEnabled"})
     private void settingWebView() {
 
         try {
@@ -92,13 +89,7 @@ public class UdeskBaseWebViewActivity extends Activity {
             //设置编码格式
             settings.setDefaultTextEncodingName("UTF-8");
             // 关于是否缩放
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-                settings.setDisplayZoomControls(false);
-            }
-            /**
-             *  Webview在安卓5.0之前默认允许其加载混合网络协议内容
-             *  在安卓5.0之后，默认不允许加载http与https混合内容，需要设置webview允许其加载混合网络协议内容
-             */
+            settings.setDisplayZoomControls(false);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
@@ -125,20 +116,33 @@ public class UdeskBaseWebViewActivity extends Activity {
                     super.onPageFinished(view, url);
                 }
 
-//                @Override
-//                public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-//
-//                }
+                @Override
+                public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
 
-//                @Override
-//                public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                }
+
+                @Override
+                public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
 //                    handler.proceed();
-//                }
+                }
 
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, String url) {
-
-                    view.loadUrl(url);
+                    Uri uri = Uri.parse(url);
+                    if (url.contains("tel:")) {
+                        Intent intent = new Intent(Intent.ACTION_DIAL, uri);
+                        startActivity(intent);
+                    } else if (url.contains("show_transfer")) {
+                        showTransfer();
+                        return true;
+                    } else if (url.contains("go_chat")) {
+                        goChat();
+                    } else if (url.contains("auto_transfer")){
+                        autoTransfer();
+                    } else {
+                        Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse(url));
+                        startActivity(intent);
+                    }
                     return true;
                 }
             });
@@ -147,6 +151,17 @@ public class UdeskBaseWebViewActivity extends Activity {
         }
     }
 
+    protected void showTransfer() {
+
+    }
+
+    protected void goChat() {
+
+    }
+
+    protected void autoTransfer() {
+
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -160,8 +175,15 @@ public class UdeskBaseWebViewActivity extends Activity {
     @Override
     protected void onDestroy() {
         try {
-            mwebView.removeAllViews();
-            mwebView = null;
+            if (mwebView != null) {
+                ViewParent parent = mwebView.getParent();
+                if (parent != null) {
+                    ((ViewGroup) parent).removeView(mwebView);
+                }
+                mwebView.removeAllViews();
+                mwebView.destroy();
+                mwebView = null;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

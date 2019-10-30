@@ -5,6 +5,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:paddingLeft="@dimen/udesk_chat_head_margin_left_or_right"
+    android:layoutDirection="ltr"
     android:paddingTop="@dimen/udesk_5">
 
     <TextView
@@ -26,8 +27,6 @@
         android:layout_marginTop="@dimen/udesk_chat_head_margin"
         fresco:actualImageScaleType="centerCrop"
         fresco:roundAsCircle="true"
-        fresco:roundingBorderColor="@color/udesk_color_line2"
-        fresco:roundingBorderWidth="1dp"
         fresco:placeholderImage="@drawable/udesk_im_default_agent_avatar"
         />
 
@@ -52,22 +51,6 @@
         android:layout_marginRight="@dimen/udesk_chat_context_margin_other_derction"
         android:layout_toRightOf="@id/udesk_iv_head">
 
-        <!--<TextView-->
-        <!--android:id="@+id/udesk_tv_msg"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:layout_marginBottom="@dimen/udesk_chat_head_margin"-->
-        <!--android:layout_marginLeft="6dp"-->
-        <!--android:layout_marginRight="@dimen/udesk_chat_head_margin"-->
-        <!--android:layout_marginTop="@dimen/udesk_chat_head_margin"-->
-        <!--android:autoLink="all"-->
-        <!--android:background="@drawable/udesk_im_item_bg_left"-->
-        <!--android:gravity="left|center_vertical"-->
-        <!--android:lineSpacingExtra="3dip"-->
-        <!--android:textColor="@color/udesk_color_im_text_left1"-->
-        <!--android:textColorLink="@color/udesk_color_im_text_left1"-->
-        <!--android:textSize="@dimen/udesk_sp16" />-->
-
         <LinearLayout
             android:id="@+id/udesk_file_view"
             android:layout_width="@dimen/udesk_190"
@@ -76,7 +59,7 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="@dimen/udesk_chat_head_margin"
             android:layout_marginTop="@dimen/udesk_chat_head_margin"
-            android:background="#f2f2f2"
+            android:background="@color/white"
             android:orientation="vertical">
 
             <TextView
@@ -103,7 +86,7 @@
                 android:indeterminate="false"
                 android:max="100"
                 android:progress="0"
-                android:progressDrawable="@drawable/progress_drawable" />
+                android:progressDrawable="@drawable/udesk_progress_drawable" />
 
             <RelativeLayout
                 android:layout_width="fill_parent"
@@ -117,7 +100,7 @@
                     android:layout_alignParentLeft="true"
                     android:layout_marginLeft="@dimen/udesk_20"
                     android:gravity="left|center"
-                    android:textColor="@color/udesk_edit_input_hint_msg_cololr1"
+                    android:textColor="@color/udesk_color_im_text_left1"
                     android:textSize="@dimen/udesk_sp16" />
 
                 <TextView
@@ -126,7 +109,7 @@
                     android:layout_height="fill_parent"
                     android:layout_alignParentRight="true"
                     android:gravity="center"
-                    android:textColor="@color/udesk_edit_input_hint_msg_cololr1"
+                    android:textColor="@color/udesk_color_im_text_left1"
                     android:textSize="@dimen/udesk_sp16" />
 
             </RelativeLayout>

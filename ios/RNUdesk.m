@@ -36,7 +36,7 @@ RCT_EXPORT_METHOD(updateCustomer:(NSDictionary *)usertInfo) {
     customer.customField = @[textField];
     customer.sdkToken = usertInfo[@"id"];
     customer.nickName = usertInfo[@"nickname"];
-    [UdeskManager updateCustomer:customer];
+    [UdeskManager updateCustomer:customer completion:nil];
 }
 
 RCT_EXPORT_METHOD(entryChat) {

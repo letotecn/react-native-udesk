@@ -5,42 +5,48 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentTransaction;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.View.OnLongClickListener;
-import android.view.View.OnTouchListener;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.PopupWindow;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.facebook.drawee.backends.pipeline.Fresco;
+import com.facebook.drawee.view.SimpleDraweeView;
 
 import org.json.JSONObject;
 
@@ -48,67 +54,77 @@ import java.io.File;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+import cn.udesk.PreferenceHelper;
 import cn.udesk.R;
-import cn.udesk.UdeskConst;
 import cn.udesk.UdeskSDKManager;
 import cn.udesk.UdeskUtil;
 import cn.udesk.activity.MessageAdatper.AudioViewHolder;
-import cn.udesk.adapter.UDEmojiAdapter;
+import cn.udesk.adapter.UdeskFunctionAdapter;
+import cn.udesk.camera.UdeskCameraActivity;
 import cn.udesk.config.UdekConfigUtil;
 import cn.udesk.config.UdeskBaseInfo;
 import cn.udesk.config.UdeskConfig;
 import cn.udesk.db.UdeskDBManager;
+import cn.udesk.emotion.EmotionKeyboard;
+import cn.udesk.emotion.EmotionLayout;
+import cn.udesk.emotion.IEmotionSelectedListener;
+import cn.udesk.emotion.LQREmotionKit;
+import cn.udesk.messagemanager.UdeskMessageManager;
+import cn.udesk.model.FunctionMode;
 import cn.udesk.model.SDKIMSetting;
 import cn.udesk.model.SurveyOptionsModel;
 import cn.udesk.model.UdeskCommodityItem;
+import cn.udesk.model.UdeskQueueItem;
 import cn.udesk.permission.RequestCode;
 import cn.udesk.permission.XPermissionUtils;
+import cn.udesk.photoselect.PhotoSelectorActivity;
+import cn.udesk.photoselect.entity.LocalMedia;
 import cn.udesk.presenter.ChatActivityPresenter;
 import cn.udesk.presenter.IChatActivityView;
+import cn.udesk.presenter.MessageCache;
+import cn.udesk.voice.AudioRecordButton;
 import cn.udesk.voice.RecordFilePlay;
 import cn.udesk.voice.RecordPlay;
 import cn.udesk.voice.RecordPlayCallback;
-import cn.udesk.voice.RecordStateCallback;
-import cn.udesk.voice.RecordTouchListener;
-import cn.udesk.widget.HorVoiceView;
 import cn.udesk.widget.UDPullGetMoreListView;
 import cn.udesk.widget.UdeskConfirmPopWindow;
 import cn.udesk.widget.UdeskConfirmPopWindow.OnPopConfirmClick;
 import cn.udesk.widget.UdeskExpandableLayout;
 import cn.udesk.widget.UdeskMultiMenuHorizontalWindow;
 import cn.udesk.widget.UdeskMultiMenuHorizontalWindow.OnPopMultiMenuClick;
+import cn.udesk.widget.UdeskSurvyPopwindow;
 import cn.udesk.widget.UdeskTitleBar;
-import udesk.core.UdeskCoreConst;
+import udesk.core.JsonObjectUtils;
+import udesk.core.LocalManageUtil;
+import udesk.core.UdeskConst;
 import udesk.core.UdeskHttpFacade;
 import udesk.core.event.InvokeEventContainer;
 import udesk.core.model.AgentInfo;
 import udesk.core.model.MessageInfo;
+import udesk.core.model.Product;
 import udesk.core.utils.UdeskUtils;
+import udesk.core.xmpp.XmppInfo;
 
-public class UdeskChatActivity extends Activity implements IChatActivityView,
-        OnClickListener, OnTouchListener, OnLongClickListener,
-        OnItemClickListener, RecordStateCallback, HorVoiceView.UdeskTimeCallback {
 
-    private Button sendBtn;
+public class UdeskChatActivity extends UdeskBaseActivity implements IChatActivityView, IEmotionSelectedListener,
+        OnClickListener {
+    LinearLayout mContentLinearLayout;//消息内容区域
+    ImageView mAudioImg; //语言和内容
+    private TextView sendBtn;
+    private AudioRecordButton mBtnAudio;
+    ImageView mEmojiImg;
+    ImageView mMoreImg;
+    FrameLayout mBotomFramlayout;
+    EmotionLayout mEmotionlayout;
+    LinearLayout mMoreLayout;
+    private EmotionKeyboard mEmotionKeyboard;
+
     private EditText mInputEditView;
-    private View showEmjoImg;//表情选择图片，用户可根据自己的需求自行设置。
-    private GridView emjoGridView;
-    private ImageView audioPop;
-    private HorVoiceView mHorVoiceView;
-    private TextView udesk_audio_tips;
-    private View emojisPannel;
-    private View btnPhoto, btnCamera, btnsurvy, btnFile;
-    private View showVoiceImg;
-    private View audioPanel;
-    private View audioCancle;
-    private View udeskImContainer;
-    private UDEmojiAdapter mEmojiAdapter;
     private UDPullGetMoreListView mListView;
     private MessageAdatper mChatAdapter;
-    private UdeskConfirmPopWindow formWindow = null;
-    private UdeskConfirmPopWindow bolckedWindow = null;
-    private UdeskConfirmPopWindow gpsNetWindow = null;
+    private UdeskConfirmPopWindow popWindow = null;
     private UdeskExpandableLayout expandableLayout = null;  //动画显示上线离线提醒的控件
     private UdeskTitleBar mTitlebar;
     private RecordFilePlay mRecordFilePlay;
@@ -123,26 +139,29 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     private String isbolcked = "";
     private String bolckedNotice = "";
 
+
     // 标记当前是否有客服在线，客服不在线状态是不能发送消息的，
     private boolean currentStatusIsOnline = false;
     private boolean isNeedStartExpandabLyout = false;
     private boolean isNeedRelogin = false;
     private boolean hasSendCommodity = false;
-    private boolean hasAddCommodity = false;
+    private boolean hasSendFirstMessage = false;
 
 
     private int historyCount = 0; // 记录数据库中总的记录数
     private int offset = -1; // 标记偏移值
-    private int initViewMode = 1;
-    private int pullRefreshModel = 2;
-    private int pullEVentModel = 3;
+    public static final int InitViewMode = 1; //初始化
+    public static final int PullRefreshModel = 2; //下拉刷新
+    public static final int PullEventModel = 3; //拉去工单回复
     private long preMsgSendTime = 0; //记录发送预支消息间隔时间
-    private long QUEUE_RETEY_TIME = 5 * 1000; // 客服繁忙时  轮询的间隔时间
+    private long QUEUE_RETEY_TIME = 20 * 1000; // 客服繁忙时  轮询的间隔时间
 
     private final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 101;
     private final int SELECT_IMAGE_ACTIVITY_REQUEST_CODE = 102;
-    private final int SELECT_SURVY_OPTION_REQUEST_CODE = 103;
     private final int SELECT_FILE_OPTION_REQUEST_CODE = 104;
+    private final int SELECT_LOCATION_OPTION_REQUEST_CODE = 105;
+    private final int SELECT_UDESK_IMAGE_ACTIVITY_REQUEST_CODE = 106;
+    private final int CAPTURE_IMAGE_SMALLVIDEO_ACTIVITY_REQUEST_CODE = 107;
 
     private MyHandler mHandler;
     private ChatActivityPresenter mPresenter;
@@ -151,8 +170,36 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     private boolean isInitComplete = false; //标识进入请求分配客服的流程是否结束
     private boolean isOverConversation = false;//标识会话是否客服已经关闭会话
 
+    private boolean isFirstFinish = true;//第一返回,如果设置了弹出满意度评价则弹出,无论评价与否,第二次
     private boolean isLeavingmsg = false;
     private boolean isPermmitSurvy = true;
+    private boolean isNeedOpenLocalCamera = false;
+    //    private boolean isfirstWaitTips = true;
+    private boolean isDestroyed = false; //表示是否执行ondestory
+
+    private boolean isPresessionStatus = false;//标记是否是无消息对话状态
+    String pre_session_id = ""; //无消息对话状态下id
+
+    //咨询对象的展示界面
+    private View commodityView;
+    private RelativeLayout commodityRoot;
+    public SimpleDraweeView commodityThumbnail;
+    public TextView commodityTitle;
+    public TextView commoditySubTitle;
+    public TextView commodityLink;
+
+
+    GridView funGridView;
+    List<FunctionMode> functionItems = new ArrayList<FunctionMode>();
+    UdeskFunctionAdapter udeskFunctionAdapter;
+
+    private LinearLayout navigationRootView, addNavigationFragmentView, navigation_survy;
+
+    //排队中的消息提醒
+    private UdeskQueueItem queueItem;
+    private boolean isInTheQueue = false;
+    //最多允许发送20条消息
+    boolean isMoreThan20 = false;
 
     public static class MessageWhat {
         public static final int loadHistoryDBMsg = 1;
@@ -162,10 +209,8 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         public static final int refreshAdapter = 5;
         public static final int changeImState = 6;
         public static final int onNewMessage = 7;
-        public static final int RECORD_ERROR = 8;
-        public static final int RECORD_Too_Short = 10;
-        public static final int UPDATE_VOCIE_STATUS = 12;
-        public static final int recordllegal = 13;
+        public static final int pre_session_status = 8;
+        public static final int RECORD_ERROR = 10;
         public static final int status_notify = 14;
         public static final int redirectSuccess = 15;
         public static final int surveyNotify = 16;
@@ -175,6 +220,9 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         public static final int Survey_error = 20;
         public static final int Add_UdeskEvent = 21;
         public static final int ChangeFielProgress = 22;
+        public static final int ChangeVideoThumbnail = 23;
+        public static final int Survey_Success = 24;
+        public static final int RECREATE_CUSTOMER_INFO = 25;
     }
 
     class ConnectivtyChangedReceiver extends BroadcastReceiver {
@@ -204,6 +252,9 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     setTitlebar(context.getResources().getString(
                             R.string.udesk_agent_connecting_error_net_uavailabl), "off");
                     currentStatusIsOnline = false;
+                    if (mHandler!=null && myRunnable!=null){
+                        mHandler.removeCallbacks(myRunnable);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -229,18 +280,19 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     case MessageWhat.loadHistoryDBMsg:
                         if (activity.mChatAdapter != null && activity.mListView != null) {
                             List<MessageInfo> msgs = (ArrayList<MessageInfo>) msg.obj;
-                            if (UdeskBaseInfo.commodity != null && !activity.hasAddCommodity) {
-                                msgs.add(UdeskBaseInfo.commodity);
-                                activity.hasAddCommodity = true;
+                            if (UdeskSDKManager.getInstance().getUdeskConfig().commodity != null) {
+                                activity.showCommodity(UdeskSDKManager.getInstance().getUdeskConfig().commodity);
                             }
-                            int selectIndex = activity.mChatAdapter.getCount();
-                            if (msg.arg1 == activity.pullEVentModel) {
+                            int selectIndex = msgs.size();
+                            if (msg.arg1 == UdeskChatActivity.PullEventModel) {
                                 activity.mChatAdapter.listAddEventItems(msgs);
+                            } else if (msg.arg1 == UdeskChatActivity.PullRefreshModel) {
+                                activity.mChatAdapter.listAddItems(msgs, true);
                             } else {
-                                activity.mChatAdapter.listAddItems(msgs);
+                                activity.mChatAdapter.listAddItems(msgs, false);
                             }
                             activity.mListView.onRefreshComplete();
-                            if (msg.arg1 == activity.initViewMode || msg.arg1 == activity.pullEVentModel) {
+                            if (msg.arg1 == UdeskChatActivity.InitViewMode || msg.arg1 == UdeskChatActivity.PullEventModel) {
                                 activity.mListView.setSelection(activity.mChatAdapter.getCount());
                             } else {
                                 activity.mListView.setSelection(selectIndex);
@@ -248,28 +300,88 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         }
                         break;
                     case MessageWhat.NoAgent:
+                        activity.isInTheQueue = false;
+                        activity.dismissFormWindow();
+                        if (activity.mPresenter != null) {
+                            activity.mPresenter.sendPrefilterMsg(false);
+                        }
                         if (activity.isleaveMessageTypeMsg()) {
+                            if (activity.mPresenter != null) {
+                                activity.mPresenter.addLeavMsgWeclome(UdeskSDKManager.getInstance().getImSetting().getLeave_message_guide());
+                            }
                             activity.setUdeskImContainerVis(View.GONE);
                             activity.setTitlebar(activity.getString(R.string.udesk_ok), "off");
                         } else {
                             activity.mAgentInfo = (AgentInfo) msg.obj;
-                            activity.setTitlebar(activity.mAgentInfo.getMessage(), "off");
-                            activity.confirmToForm();
+                            activity.setTitlebar(activity.getString(R.string.udesk_label_customer_offline), "off");
+                            activity.delayShowtips(this);
+                        }
+                        if (activity.queueItem != null && activity.mChatAdapter != null) {
+                            activity.mChatAdapter.removeQueueMessage(activity.queueItem);
+                            activity.queueItem = null;
+                            activity.mListView.smoothScrollToPosition(activity.mChatAdapter.getCount());
                         }
                         break;
                     case MessageWhat.HasAgent:
+                        activity.isInTheQueue = false;
+                        activity.dismissFormWindow();
                         activity.setUdeskImContainerVis(View.VISIBLE);
                         activity.mAgentInfo = (AgentInfo) msg.obj;
                         activity.currentStatusIsOnline = true;
                         activity.showOnlieStatus(activity.mAgentInfo);
+                        activity.setNavigationViewVis();
+                        activity.initfunctionItems();
+                        if (activity.queueItem != null && activity.mChatAdapter != null) {
+                            activity.mChatAdapter.removeQueueMessage(activity.queueItem);
+                            activity.queueItem = null;
+                            activity.mListView.smoothScrollToPosition(activity.mChatAdapter.getCount());
+                        }
                         if (activity.mPresenter != null) {
+                            activity.mPresenter.pullMessages(0, activity.mAgentInfo.getIm_sub_session_id());
+                            activity.mPresenter.sendPrefilterMsg(true);
                             activity.mPresenter.selfretrySendMsg();
                         }
+                        if (!activity.hasSendCommodity) {
+                            activity.hasSendCommodity = true;
+                            activity.sendCommodityMsg(UdeskSDKManager.getInstance().getUdeskConfig().commodity);
+                            activity.sendProduct(UdeskSDKManager.getInstance().getUdeskConfig().mProduct);
+                        }
+                        if (!activity.hasSendFirstMessage) {
+                            activity.hasSendFirstMessage = true;
+                            activity.sendDefualtMessage();
+                        }
+                        activity.sendVideoMessage();
                         break;
                     case MessageWhat.WaitAgent:
+                        activity.isInTheQueue = true;
+                        activity.isPresessionStatus = false;
+                        activity.isOverConversation = false;
                         activity.mAgentInfo = (AgentInfo) msg.obj;
-                        activity.setTitlebar(activity.mAgentInfo.getMessage(), "off");
+                        activity.setTitlebar(activity.getResources().getString(R.string.udesk_in_the_line), "queue");
+                        activity.setUdeskImContainerVis(View.VISIBLE);
                         this.postDelayed(activity.myRunnable, activity.QUEUE_RETEY_TIME);
+                        if (activity.mPresenter != null) {
+                            activity.mPresenter.sendPrefilterMsg(true);
+                        }
+                        if (!activity.hasSendCommodity) {
+                            activity.hasSendCommodity = true;
+                            activity.sendCommodityMsg(UdeskSDKManager.getInstance().getUdeskConfig().commodity);
+                            activity.sendProduct(UdeskSDKManager.getInstance().getUdeskConfig().mProduct);
+                        }
+                        if (!activity.hasSendFirstMessage) {
+                            activity.hasSendFirstMessage = true;
+                            activity.sendDefualtMessage();
+                        }
+                        if (activity.queueItem == null) {
+                            activity.queueItem = new UdeskQueueItem(activity.isOpenLeaveMsg(), activity.mAgentInfo.getMessage());
+                            if (activity.mChatAdapter != null) {
+                                activity.mChatAdapter.addItem(activity.queueItem);
+                                activity.mListView.smoothScrollToPosition(activity.mChatAdapter.getCount());
+                            }
+                        } else {
+                            activity.queueItem.setQueueContent(activity.mAgentInfo.getMessage());
+                            activity.mChatAdapter.notifyDataSetChanged();
+                        }
                         break;
                     case MessageWhat.refreshAdapter:
                         if (activity.mChatAdapter != null) {
@@ -282,6 +394,10 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         String msgId = (String) msg.obj;
                         int flag = msg.arg1;
                         activity.changeImState(msgId, flag);
+                        break;
+                    case MessageWhat.ChangeVideoThumbnail:
+                        String videoMsgId = (String) msg.obj;
+                        activity.changeVideoThumbnail(videoMsgId);
                         break;
                     case MessageWhat.ChangeFielProgress:
                         String fileMsgId = (String) msg.obj;
@@ -296,6 +412,9 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         break;
                     case MessageWhat.onNewMessage:
                         MessageInfo msgInfo = (MessageInfo) msg.obj;
+                        if (msgInfo == null){
+                            return;
+                        }
                         if (msgInfo.getMsgtype().equals(UdeskConst.ChatMsgTypeString.TYPE_REDIRECT)) {
                             try {
                                 if (activity.mPresenter != null) {
@@ -312,60 +431,59 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                             }
                         } else {
                             if (activity.mChatAdapter != null) {
-                                if (activity.mAgentInfo != null) {
-                                    msgInfo.setAgentUrl(activity.mAgentInfo.getHeadUrl());
-                                    msgInfo.setNickName(activity.mAgentInfo.getAgentNick());
+                                if (activity.mAgentInfo != null && activity.mAgentInfo.getAgentCode() == UdeskConst.AgentReponseCode.HasAgent) {
+                                    msgInfo.setUser_avatar(activity.mAgentInfo.getHeadUrl());
+                                    msgInfo.setReplyUser(activity.mAgentInfo.getAgentNick());
                                     if (!activity.mAgentInfo.getAgentJid().contains(msgInfo.getmAgentJid())) {
                                         activity.mAgentInfo.setAgentJid(msgInfo.getmAgentJid());
                                         activity.mPresenter.createIMCustomerInfo();
                                     }
+                                } else if (!TextUtils.isEmpty(msgInfo.getmAgentJid()) && activity.mAgentInfo != null && activity.mAgentInfo.getAgentCode() == UdeskConst.AgentReponseCode.WaitAgent) {
+                                    if (activity.myRunnable != null) {
+                                        this.removeCallbacks(activity.myRunnable);
+                                        this.post(activity.myRunnable);
+                                    }
+                                } else {
+                                    if (activity.mAgentInfo != null && !TextUtils.isEmpty(msgInfo.getmAgentJid()) && activity.mPresenter != null) {
+                                        activity.mPresenter.getAgentInfo(activity.pre_session_id, null);
+                                    }
                                 }
-                                activity.mChatAdapter.addItem(msgInfo);
-                                activity.mListView.smoothScrollToPosition(activity.mChatAdapter.getCount());
                             }
+                            activity.mChatAdapter.addItem(msgInfo);
+                            activity.mListView.smoothScrollToPosition(activity.mChatAdapter.getCount());
                         }
+
                         break;
-                    case MessageWhat.RECORD_ERROR:
-                        UdeskUtils.showToast(activity, activity.getResources()
-                                .getString(R.string.udesk_im_record_error));
+                    case MessageWhat.pre_session_status:
+                        String title = (String) msg.obj;
+                        activity.isPresessionStatus = true;
+                        activity.mAgentInfo = null;
+                        activity.setTitlebar(title, "on");
                         break;
-                    case MessageWhat.RECORD_Too_Short:
-                        UdeskUtils.showToast(activity, activity.getResources()
-                                .getString(R.string.udesk_label_hint_too_short));
-                        break;
-                    case MessageWhat.UPDATE_VOCIE_STATUS:
-                        activity.updateRecordStatus(msg.arg1);
-                        break;
-                    case MessageWhat.recordllegal:
-                        UdeskUtils.showToast(activity, activity.getResources()
-                                .getString(R.string.udesk_im_record_error));
-                        break;
+                    case MessageWhat.RECORD_ERROR: {
+                        activity.recordError();
+                    }
                     case MessageWhat.status_notify:
                         int onlineflag = msg.arg1;
                         String jid = (String) msg.obj;
-                        if (onlineflag == UdeskCoreConst.ONLINEFLAG) {
-                            if (activity.isbolcked.equals("true")) {
-                                return;
-                            }
-                            if (activity.mAgentInfo == null ||
-                                    TextUtils.isEmpty(activity.mAgentInfo.getAgentJid())
-                                    || !jid.contains(activity.mAgentInfo.getAgentJid())) {
-                                return;
-                            }
+                        if (activity.mAgentInfo == null ||
+                                activity.isbolcked.equals("true") ||
+                                TextUtils.isEmpty(activity.mAgentInfo.getAgentJid())
+                                || !jid.contains(activity.mAgentInfo.getAgentJid())) {
+                            return;
+                        }
+                        if (onlineflag == UdeskConst.ONLINEFLAG) {
                             if (!activity.currentStatusIsOnline && activity.isNeedStartExpandabLyout) {
                                 activity.expandableLayout.startAnimation(true);
                                 activity.currentStatusIsOnline = true;
                                 activity.isNeedStartExpandabLyout = false;
                             }
                             activity.showOnlieStatus(activity.mAgentInfo);
-                            if (activity.formWindow != null) {
-                                activity.formWindow.cancle();
+                            activity.setUdeskImContainerVis(View.VISIBLE);
+                            if (activity.popWindow != null) {
+                                activity.popWindow.cancle();
                             }
-                            if (!activity.hasSendCommodity) {
-                                activity.hasSendCommodity = true;
-                                activity.sendCommodityMsg(UdeskBaseInfo.commodity);
-                            }
-                        } else if (onlineflag == UdeskCoreConst.OFFLINEFLAG) {
+                        } else if (onlineflag == UdeskConst.OFFLINEFLAG) {
                             if (activity.mPresenter != null) {
                                 activity.mPresenter.getIMStatus(activity.mAgentInfo);
                             }
@@ -374,10 +492,13 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     case MessageWhat.IM_STATUS:
                         String imStatus = (String) msg.obj;
                         if (imStatus.equals("off")) {
+                            activity.isInTheQueue = false;
                             activity.isInitComplete = true;
                             if (activity.isleaveMessageTypeMsg()) {
                                 activity.setUdeskImContainerVis(View.GONE);
-                                activity.currentStatusIsOnline = false;
+                                if (activity.mPresenter != null) {
+                                    activity.mPresenter.addLeavMsgWeclome(UdeskSDKManager.getInstance().getImSetting().getLeave_message_guide());
+                                }
                                 activity.setTitlebar(activity.getString(R.string.udesk_ok), "off");
                             } else {
                                 if (activity.mAgentInfo != null) {
@@ -386,12 +507,12 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                                     activity.setTitlebar(activity.getResources().getString(
                                             R.string.udesk_label_customer_offline), "off");
                                 }
-                                if (activity.currentStatusIsOnline) {
-                                    activity.expandableLayout.startAnimation(false);
-                                    activity.currentStatusIsOnline = false;
-                                    activity.isNeedStartExpandabLyout = true;
-                                }
-                                activity.confirmToForm();
+                                activity.delayShowtips(this);
+                            }
+                            if (activity.currentStatusIsOnline) {
+                                activity.expandableLayout.startAnimation(false);
+                                activity.currentStatusIsOnline = false;
+                                activity.isNeedStartExpandabLyout = true;
                             }
                         }
                         break;
@@ -404,7 +525,13 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
                         }
                         activity.setTitlebar(activity.bolckedNotice, "off");
-                        activity.toBolckedView();
+                        this.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                activity.toBolckedView();
+                            }
+                        }, 1500);
+
                         break;
                     case MessageWhat.Has_Survey:
                         UdeskUtils.showToast(activity, activity.getResources()
@@ -414,6 +541,10 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         UdeskUtils.showToast(activity, activity.getResources()
                                 .getString(R.string.udesk_survey_error));
                         break;
+                    case MessageWhat.Survey_Success:
+                        UdeskUtils.showToast(activity, activity.getResources()
+                                .getString(R.string.udesk_thanks_survy));
+                        break;
                     case MessageWhat.redirectSuccess:
                         MessageInfo redirectSuccessmsg = (MessageInfo) msg.obj;
                         if (activity.mChatAdapter != null) {
@@ -422,12 +553,12 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         }
                         activity.currentStatusIsOnline = true;
                         activity.showOnlieStatus(activity.mAgentInfo);
-
+                        activity.sendVideoMessage();
                         break;
                     case MessageWhat.surveyNotify:
                         SurveyOptionsModel surveyOptions = (SurveyOptionsModel) msg.obj;
                         if (surveyOptions != null) {
-                            activity.toLuanchSurveyActivity(surveyOptions);
+                            activity.toLuanchSurveyView(surveyOptions);
                         }
                         break;
                     case MessageWhat.Add_UdeskEvent:
@@ -436,42 +567,9 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                             activity.mChatAdapter.addItem(eventMsg);
                         }
                         break;
-
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-
-    class EditChangedListener implements TextWatcher {
-        @Override
-        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-        }
-
-        @Override
-        public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-        }
-
-        @Override
-        public void afterTextChanged(Editable s) { //发送输入预支消息
-            try {
-                if (isbolcked.equals("true") || !currentStatusIsOnline || isOverConversation) {
-                    return;
-                }
-                if (TextUtils.isEmpty(mInputEditView.getText().toString())) {
-                    mPresenter.sendPreMessage();
-                    return;
-                }
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - preMsgSendTime > 500) {
-                    if (mPresenter != null) {
-                        preMsgSendTime = currentTime;
-                        mPresenter.sendPreMessage();
-                    }
+                    case MessageWhat.RECREATE_CUSTOMER_INFO:
+                        activity.reCreateIMCustomerInfo();
+                        break;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -482,24 +580,27 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (!Fresco.hasBeenInitialized()) {
-            UdeskSDKManager.getInstance().init(this);
-        }
         try {
+            UdeskUtils.resetTime();
+            LocalManageUtil.getSetLanguageLocale();
+            UdeskUtil.setOrientation(this);
+            if (!Fresco.hasBeenInitialized()) {
+                UdeskUtil.frescoInit(this);
+            }
             setContentView(R.layout.udesk_activity_im);
             mHandler = new MyHandler(UdeskChatActivity.this);
             mPresenter = new ChatActivityPresenter(this);
-            UdeskBaseInfo.isNeedMsgNotice = false;
+
             InvokeEventContainer.getInstance().event_IsOver.bind(this, "isOverConversation");
             isOverConversation = false;
             initIntent();
             settingTitlebar();
             initView();
             //进入会话界面 关闭推送
-            if (!TextUtils.isEmpty(UdeskSDKManager.getInstance().getRegisterId(UdeskChatActivity.this)) && UdeskConfig.isUserSDkPush) {
+            if (!TextUtils.isEmpty(UdeskSDKManager.getInstance().getRegisterId(UdeskChatActivity.this))) {
                 UdeskSDKManager.getInstance().setSdkPushStatus(UdeskSDKManager.getInstance().getDomain(this),
                         UdeskSDKManager.getInstance().getAppkey(this),
-                        UdeskBaseInfo.sdkToken, UdeskConfig.UdeskPushFlag.OFF,
+                        UdeskSDKManager.getInstance().getSdkToken(getApplicationContext()), UdeskConfig.UdeskPushFlag.OFF,
                         UdeskSDKManager.getInstance().getRegisterId(UdeskChatActivity.this),
                         UdeskSDKManager.getInstance().getAppId(this));
             }
@@ -520,6 +621,19 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                 groupId = intent.getStringExtra(UdeskConst.UDESKGROUPID);
                 agentId = intent.getStringExtra(UdeskConst.UDESKAGENTID);
             }
+            //重导航传入groupid的优先级 高于设置的groupid
+            if (TextUtils.isEmpty(groupId) && !TextUtils.isEmpty(UdeskSDKManager.getInstance().getUdeskConfig().groupId)) {
+                groupId = UdeskSDKManager.getInstance().getUdeskConfig().groupId;
+            }
+            if (TextUtils.isEmpty(agentId) && !TextUtils.isEmpty(UdeskSDKManager.getInstance().getUdeskConfig().agentId)) {
+                agentId = UdeskSDKManager.getInstance().getUdeskConfig().agentId;
+            }
+            if (!TextUtils.isEmpty(groupId)) {
+                PreferenceHelper.write(this, UdeskConst.SharePreParams.Udesk_Sharepre_Name,
+                        UdeskConst.SharePreParams.Udesk_Group_Id, groupId);
+            }
+            PreferenceHelper.write(this, UdeskConst.SharePreParams.Udesk_Sharepre_Name,
+                    UdeskConst.SharePreParams.Udesk_Agent_Id, agentId);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -532,10 +646,12 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         try {
             mTitlebar = (UdeskTitleBar) findViewById(R.id.udesktitlebar);
             if (mTitlebar != null) {
-                UdekConfigUtil.setUITextColor(UdeskConfig.udeskTitlebarTextLeftRightResId, mTitlebar.getLeftTextView(), mTitlebar.getRightTextView());
-                UdekConfigUtil.setUIbgDrawable(UdeskConfig.udeskTitlebarBgResId, mTitlebar.getRootView());
-                if (UdeskConfig.DEFAULT != UdeskConfig.udeskbackArrowIconResId) {
-                    mTitlebar.getUdeskBackImg().setImageResource(UdeskConfig.udeskbackArrowIconResId);
+                UdekConfigUtil.setUITextColor(UdeskSDKManager.getInstance().getUdeskConfig().udeskTitlebarTextLeftRightResId, mTitlebar.getLeftTextView(), mTitlebar.getRightTextView());
+                if (mTitlebar.getRootView() != null) {
+                    UdekConfigUtil.setUIbgDrawable(UdeskSDKManager.getInstance().getUdeskConfig().udeskTitlebarBgResId, mTitlebar.getRootView());
+                }
+                if (UdeskConfig.DEFAULT != UdeskSDKManager.getInstance().getUdeskConfig().udeskbackArrowIconResId) {
+                    mTitlebar.getUdeskBackImg().setImageResource(UdeskSDKManager.getInstance().getUdeskConfig().udeskbackArrowIconResId);
                 }
                 mTitlebar
                         .setLeftTextSequence(getString(R.string.udesk_agent_connecting));
@@ -553,50 +669,175 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
+    private void showCommodity(final UdeskCommodityItem item) {
+        try {
+            commodityView.setVisibility(View.VISIBLE);
+            commodityTitle.setText(item.getTitle());
+            commoditySubTitle.setText(item.getSubTitle());
+            UdeskUtil.loadNoChangeView(getApplicationContext(), commodityThumbnail, Uri.parse(item.getThumbHttpUrl()));
+            commodityLink.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    sentLink(item.getCommodityUrl());
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void initView() {
         try {
-            formWindow = new UdeskConfirmPopWindow(this);
-            bolckedWindow = new UdeskConfirmPopWindow(this);
-            gpsNetWindow = new UdeskConfirmPopWindow(this);
-            sendBtn = (Button) findViewById(R.id.udesk_bottom_send);
+            commodityView = findViewById(R.id.commodity_rl);
+            commodityView.setVisibility(View.GONE);
+            commodityThumbnail = (SimpleDraweeView) findViewById(R.id.udesk_im_commondity_thumbnail);
+            commodityRoot = (RelativeLayout) findViewById(R.id.udesk_commit_root);
+            commodityTitle = (TextView) findViewById(R.id.udesk_im_commondity_title);
+            commoditySubTitle = (TextView) findViewById(R.id.udesk_im_commondity_subtitle);
+            commodityLink = (TextView) findViewById(R.id.udesk_im_commondity_link);
+            UdekConfigUtil.setUIbgDrawable(UdeskSDKManager.getInstance().getUdeskConfig().udeskCommityBgResId, commodityRoot);
+            UdekConfigUtil.setUITextColor(UdeskSDKManager.getInstance().getUdeskConfig().udeskCommityTitleColorResId, commodityTitle);
+            UdekConfigUtil.setUITextColor(UdeskSDKManager.getInstance().getUdeskConfig().udeskCommitysubtitleColorResId, commoditySubTitle);
+            UdekConfigUtil.setUITextColor(UdeskSDKManager.getInstance().getUdeskConfig().udeskCommityLinkColorResId, commodityLink);
+            popWindow = new UdeskConfirmPopWindow(this);
+            sendBtn = (TextView) findViewById(R.id.udesk_bottom_send);
             sendBtn.setOnClickListener(this);
             mInputEditView = (EditText) findViewById(R.id.udesk_bottom_input);
-            mInputEditView.addTextChangedListener(new EditChangedListener());
-            mInputEditView.setOnTouchListener(this);
-            emojisPannel = findViewById(R.id.udesk_bottom_emojis);
-            showEmjoImg = findViewById(R.id.udesk_bottom_show_emoji);
-            showEmjoImg.setOnClickListener(this);
-            mEmojiAdapter = new UDEmojiAdapter(this);
-            emjoGridView = (GridView) findViewById(R.id.udesk_bottom_emoji_pannel);
-            emjoGridView.setAdapter(mEmojiAdapter);
-            emjoGridView.setOnItemClickListener(this);
-            btnCamera = findViewById(R.id.udesk_bottom_option_camera);
-            btnCamera.setOnClickListener(this);
-            btnPhoto = findViewById(R.id.udesk_bottom_option_photo);
-            btnPhoto.setOnClickListener(this);
-            btnFile = findViewById(R.id.udesk_bottom_option_file);
-            btnFile.setOnClickListener(this);
-            btnsurvy = findViewById(R.id.udesk_bottom_survy_rl);
-            btnsurvy.setOnClickListener(this);
-            if (UdeskSDKManager.getInstance().getImSetting() != null && !UdeskSDKManager.getInstance().getImSetting().getEnable_im_survey()) {
-                btnsurvy.setVisibility(View.GONE);
-            }
+
+            funGridView = (GridView) findViewById(R.id.function_gridview);
+            udeskFunctionAdapter = new UdeskFunctionAdapter(this);
+            funGridView.setAdapter(udeskFunctionAdapter);
+            initfunctionItems();
+            funGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+
+                    try {
+                        FunctionMode functionItem = (FunctionMode) adapterView.getItemAtPosition(i);
+                        switch (functionItem.getId()) {
+                            case UdeskConst.UdeskFunctionFlag.Udesk_Camera:
+                                clickCamera();
+                                mBotomFramlayout.setVisibility(View.GONE);
+                                break;
+                            case UdeskConst.UdeskFunctionFlag.Udesk_Photo:
+                                clickPhoto();
+                                mBotomFramlayout.setVisibility(View.GONE);
+                                break;
+                            case UdeskConst.UdeskFunctionFlag.Udesk_Udesk_File:
+                                clickFile();
+                                mBotomFramlayout.setVisibility(View.GONE);
+                                break;
+                            case UdeskConst.UdeskFunctionFlag.Udesk_Survy:
+                                if (isPresessionStatus) {
+                                    UdeskUtils.showToast(getApplicationContext(),
+                                            getString(R.string.udesk_can_not_be_evaluated));
+                                    return;
+                                }
+                                clickSurvy();
+                                break;
+                            case UdeskConst.UdeskFunctionFlag.Udesk_Location:
+                                if (Build.VERSION.SDK_INT < 23) {
+                                    clickLocation();
+                                    mBotomFramlayout.setVisibility(View.GONE);
+                                } else {
+                                    XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.LOCATION,
+                                            new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,
+                                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                                                    Manifest.permission.READ_PHONE_STATE},
+                                            new XPermissionUtils.OnPermissionListener() {
+                                                @Override
+                                                public void onPermissionGranted() {
+                                                    clickLocation();
+                                                    mBotomFramlayout.setVisibility(View.GONE);
+                                                }
+
+                                                @Override
+                                                public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
+                                                    Toast.makeText(UdeskChatActivity.this,
+                                                            getResources().getString(R.string.location_denied),
+                                                            Toast.LENGTH_SHORT).show();
+                                                }
+                                            });
+                                }
+
+                                break;
+                            case UdeskConst.UdeskFunctionFlag.Udesk_Video:
+                                if (isPresessionStatus) {
+                                    UdeskUtils.showToast(getApplicationContext(), getString(R.string.udesk_can_not_be_video));
+                                    return;
+                                }
+                                startVideo();
+                                mBotomFramlayout.setVisibility(View.GONE);
+                                break;
+                            default:
+                                if (UdeskSDKManager.getInstance().getUdeskConfig().functionItemClickCallBack != null
+                                        && mPresenter != null) {
+                                    UdeskSDKManager.getInstance().getUdeskConfig().functionItemClickCallBack
+                                            .callBack(getApplicationContext(), mPresenter, functionItem.getId(), functionItem.getName());
+                                }
+                                break;
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
             mListView = (UDPullGetMoreListView) findViewById(R.id.udesk_conversation);
+            mListView.addFooterView(LayoutInflater.from(this).inflate(R.layout.udesk_im_footview,null));
             expandableLayout = (UdeskExpandableLayout) findViewById(R.id.udesk_change_status_info);
 
-            showVoiceImg = findViewById(R.id.udesk_bottom_voice_rl);
-            showVoiceImg.setOnClickListener(this);
-            if (UdeskConfig.isUseVoice) {
-                showVoiceImg.setVisibility(View.VISIBLE);
+            mContentLinearLayout = (LinearLayout) findViewById(R.id.udesk_content_ll);
+            mAudioImg = (ImageView) findViewById(R.id.udesk_img_audio);
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseVoice) {
+                mAudioImg.setVisibility(View.VISIBLE);
             } else {
-                showVoiceImg.setVisibility(View.GONE);
+                mAudioImg.setVisibility(View.GONE);
             }
-            audioPanel = findViewById(R.id.udesk_bottom_audios);
-            mHorVoiceView = (HorVoiceView) findViewById(R.id.udesk_horvoiceview);
-            udesk_audio_tips = (TextView) findViewById(R.id.udesk_audio_tips);
-            audioCancle = findViewById(R.id.udesk_audio_cancle_image);
-            udeskImContainer = findViewById(R.id.udesk_im_container);
-            audioPop = (ImageView) findViewById(R.id.udesk_audio_pop);
+            mBtnAudio = (AudioRecordButton) findViewById(R.id.udesk_audio_btn);
+            mBtnAudio.init(UdeskUtils.getDirectoryPath(getApplicationContext(), UdeskConst.FileAduio));
+            mBtnAudio.setRecordingListener(new AudioRecordButton.OnRecordingListener() {
+                @Override
+                public void recordStart() {
+                    if (mRecordFilePlay != null) {
+                        showStartOrStopAnaimaition(
+                                mRecordFilePlay.getPlayAduioMessage(), false);
+                        recycleVoiceRes();
+                    }
+
+                }
+
+                @Override
+                public void recordFinish(String audioFilePath, long recordTime) {
+                    if (mPresenter != null) {
+                        mPresenter.sendRecordAudioMsg(audioFilePath, recordTime);
+                    }
+                }
+
+                @Override
+                public void recordError(String message) {
+                    Message msg = Message.obtain();
+                    msg.what = MessageWhat.RECORD_ERROR;
+                    mHandler.sendMessage(msg);
+
+                }
+            });
+
+            mEmojiImg = (ImageView) findViewById(R.id.udesk_emoji_img);
+            showEmoji();
+            mMoreImg = (ImageView) findViewById(R.id.udesk_more_img);
+            mBotomFramlayout = (FrameLayout) findViewById(R.id.udesk_bottom_frame);
+            mEmotionlayout = (EmotionLayout) findViewById(R.id.udesk_emotion_view);
+            mMoreLayout = (LinearLayout) findViewById(R.id.udesk_more_layout);
+            mEmotionlayout.attachEditText(mInputEditView);
+            initEmotionKeyboard();
+
+            navigationRootView = findViewById(R.id.navigation_root_view);
+            addNavigationFragmentView = findViewById(R.id.fragment_view);
+            navigation_survy = findViewById(R.id.navigation_survy);
+            navigation_survy.setOnClickListener(this);
+            setNavigationViewVis();
             setListView();
             initDatabase();
             mPresenter.createIMCustomerInfo();
@@ -607,6 +848,312 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
     }
 
+    private void showEmoji() {
+        try {
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseEmotion && LQREmotionKit.getEmotionPath() != null) {
+                mEmojiImg.setVisibility(View.VISIBLE);
+            } else {
+                mEmojiImg.setVisibility(View.GONE);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initfunctionItems() {
+        try {
+            functionItems.clear();
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUsecamera) {
+                FunctionMode cameraItem = new FunctionMode(getString(R.string.funtion_camera), UdeskConst.UdeskFunctionFlag.Udesk_Camera, R.drawable.udesk_camer_normal1);
+                functionItems.add(cameraItem);
+            }
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUsephoto) {
+                FunctionMode photoItem = new FunctionMode(getString(R.string.photo), UdeskConst.UdeskFunctionFlag.Udesk_Photo, R.drawable.udesk_image_normal1);
+                functionItems.add(photoItem);
+            }
+            if (isOpenVideo() && mAgentInfo != null) {
+                FunctionMode videoItem = new FunctionMode(getString(R.string.video), UdeskConst.UdeskFunctionFlag.Udesk_Video, R.drawable.udesk_video_normal);
+                functionItems.add(videoItem);
+            }
+
+            if (mAgentInfo != null && UdeskSDKManager.getInstance().getImSetting() != null && UdeskSDKManager.getInstance().getImSetting().getEnable_im_survey()) {
+                FunctionMode survyItem = new FunctionMode(getString(R.string.survy), UdeskConst.UdeskFunctionFlag.Udesk_Survy, R.drawable.udesk_survy_normal);
+                functionItems.add(survyItem);
+            }
+
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseMap) {
+                FunctionMode mapItem = new FunctionMode(getString(R.string.location), UdeskConst.UdeskFunctionFlag.Udesk_Location, R.drawable.udesk_location_normal);
+                functionItems.add(mapItem);
+            }
+
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUsefile) {
+                FunctionMode fileItem = new FunctionMode(getString(R.string.file), UdeskConst.UdeskFunctionFlag.Udesk_Udesk_File, R.drawable.udesk_file_icon);
+                functionItems.add(fileItem);
+            }
+
+            if (UdeskSDKManager.getInstance().getUdeskConfig().extreFunctions != null
+                    && UdeskSDKManager.getInstance().getUdeskConfig().extreFunctions.size() > 0) {
+                functionItems.addAll(UdeskSDKManager.getInstance().getUdeskConfig().extreFunctions);
+            }
+
+            udeskFunctionAdapter.setFunctionItems(functionItems);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setNavigationViewVis() {
+        try {
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseNavigationRootView) {
+                navigationRootView.setVisibility(View.VISIBLE);
+            } else {
+                navigationRootView.setVisibility(View.GONE);
+            }
+            if (UdeskSDKManager.getInstance().getUdeskConfig().navigationModes != null
+                    && UdeskSDKManager.getInstance().getUdeskConfig().navigationModes.size() > 0) {
+                addNavigationFragment();
+            }
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseNavigationSurvy && mAgentInfo != null &&
+                    UdeskSDKManager.getInstance().getImSetting() != null
+                    && UdeskSDKManager.getInstance().getImSetting().getEnable_im_survey()) {
+                navigation_survy.setVisibility(View.VISIBLE);
+            } else {
+                navigation_survy.setVisibility(View.GONE);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void recordError() {
+        try {
+            UdeskUtils.showToast(UdeskChatActivity.this.getApplicationContext(), getResources()
+                    .getString(R.string.udesk_im_record_error));
+        } catch (Resources.NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean isOpenVideo() {
+        try {
+            return UdeskSDKManager.getInstance().getImSetting() != null
+                    && UdeskSDKManager.getInstance().getImSetting().getVcall()
+                    && UdeskSDKManager.getInstance().getImSetting().getSdk_vcall()
+                    && UdeskUtil.isClassExists("udesk.udeskvideo.UdeskVideoActivity");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private void initEmotionKeyboard() {
+        try {
+            mEmotionKeyboard = EmotionKeyboard.with(this);
+            mEmotionKeyboard.bindToEditText(mInputEditView);
+            mEmotionKeyboard.bindToContent(mContentLinearLayout);
+            mEmotionKeyboard.setEmotionLayout(mBotomFramlayout);
+            mEmotionKeyboard.bindToEmotionButton(mEmojiImg, mMoreImg);
+            mEmotionKeyboard.setOnEmotionButtonOnClickListener(new EmotionKeyboard.OnEmotionButtonOnClickListener() {
+                @Override
+                public boolean onEmotionButtonOnClickListener(View view) {
+                    try {
+                        if (isbolcked != null && isbolcked.equals("true")) {
+                            toBolckedView();
+                            return true;
+                        }
+                        if (isMoreTanSendCount() && isNeedQueueMessageSave()) {
+                            UdeskUtils.showToast(getApplicationContext(), getMoreThanSendTip());
+                            mEmotionKeyboard.hideSoftInput();
+                            return true;
+                        }
+                        if (!isShowNotSendMsg()) {
+                            mEmotionKeyboard.hideSoftInput();
+                            return true;
+                        }
+                        int i = view.getId();
+                        if (i == R.id.udesk_emoji_img) {
+                            if (!mEmotionlayout.isShown()) {
+                                if (mMoreLayout.isShown()) {
+                                    showEmotionLayout();
+                                    hideMoreLayout();
+                                    hideAudioButton();
+                                    return true;
+                                }
+                            } else if (mEmotionlayout.isShown() && !mMoreLayout.isShown()) {
+                                mEmojiImg.setImageResource(R.drawable.udesk_ic_cheat_emo);
+                                return false;
+                            }
+                            showEmotionLayout();
+                            hideMoreLayout();
+                            hideAudioButton();
+
+                        } else if (i == R.id.udesk_more_img) {
+                            if (!mMoreLayout.isShown()) {
+                                if (mEmotionlayout.isShown()) {
+                                    showMoreLayout();
+                                    hideEmotionLayout();
+                                    hideAudioButton();
+                                    return true;
+                                }
+                            }
+                            showMoreLayout();
+                            hideEmotionLayout();
+                            hideAudioButton();
+
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    return false;
+                }
+            });
+
+            initListener();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void initListener() {
+        try {
+            mAudioImg.setOnClickListener(this);
+            //触摸消息区域　隐藏键盘
+//        mContentLinearLayout.setOnTouchListener(new View.OnTouchListener() {
+//            @Override
+//            public boolean onTouch(View v, MotionEvent event) {
+//                bottomoPannelBegginStatus();
+//                return false;
+//            }
+//        });
+
+            mEmotionlayout.setEmotionSelectedListener(this);
+            mEmotionlayout.setEmotionAddVisiable(true);
+            mEmotionlayout.setEmotionSettingVisiable(true);
+
+
+            mInputEditView.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    try {
+                        if (mInputEditView.getText().toString().trim().length() > 0) {
+                            sendBtn.setVisibility(View.VISIBLE);
+                            mMoreImg.setVisibility(View.GONE);
+                        } else {
+                            sendBtn.setVisibility(View.GONE);
+                            if (!isleaveMessageTypeMsg() || currentStatusIsOnline || isNeedQueueMessageSave()) {
+                                mMoreImg.setVisibility(View.VISIBLE);
+                            }
+                        }
+
+                        if (isbolcked.equals("true") || !currentStatusIsOnline || isOverConversation) {
+                            return;
+                        }
+                        if (TextUtils.isEmpty(mInputEditView.getText().toString())) {
+                            mPresenter.sendPreMessage();
+                            return;
+                        }
+                        long currentTime = System.currentTimeMillis();
+                        if (currentTime - preMsgSendTime > 500) {
+                            if (mPresenter != null) {
+                                preMsgSendTime = currentTime;
+                                mPresenter.sendPreMessage();
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+    private void showAudioButton() {
+        try {
+            mBtnAudio.setVisibility(View.VISIBLE);
+            mInputEditView.setVisibility(View.GONE);
+            mAudioImg.setImageResource(R.drawable.udesk_ic_cheat_keyboard);
+
+            if (mBotomFramlayout.isShown()) {
+                if (mEmotionKeyboard != null) {
+                    mEmotionKeyboard.interceptBackPress();
+                }
+            } else {
+                if (mEmotionKeyboard != null) {
+                    mEmotionKeyboard.hideSoftInput();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void hideAudioButton() {
+        try {
+            mBtnAudio.setVisibility(View.GONE);
+            mInputEditView.setVisibility(View.VISIBLE);
+            mAudioImg.setImageResource(R.drawable.udesk_ic_cheat_voice);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showEmotionLayout() {
+        try {
+            mEmotionlayout.setVisibility(View.VISIBLE);
+            mEmojiImg.setImageResource(R.drawable.udesk_ic_cheat_keyboard);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void hideEmotionLayout() {
+        try {
+            mEmotionlayout.setVisibility(View.GONE);
+            mEmojiImg.setImageResource(R.drawable.udesk_ic_cheat_emo);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showMoreLayout() {
+        try {
+            mMoreLayout.setVisibility(View.VISIBLE);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void hideMoreLayout() {
+        try {
+            mMoreLayout.setVisibility(View.GONE);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+//    private void closeBottomAndKeyboard() {
+//        mEmotionlayout.setVisibility(View.GONE);
+//        mMoreLayout.setVisibility(View.GONE);
+//        if (mEmotionKeyboard != null) {
+//            mEmotionKeyboard.interceptBackPress();
+//        }
+//    }
+
     private void setListView() {
         try {
             mChatAdapter = new MessageAdatper(this);
@@ -616,7 +1163,7 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     .setOnRefreshListener(new UDPullGetMoreListView.OnRefreshListener() {
                         @Override
                         public void onRefresh() {
-                            loadHistoryRecords(pullRefreshModel);
+                            loadHistoryRecords(UdeskChatActivity.PullRefreshModel);
                         }
                     });
 
@@ -638,10 +1185,16 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    historyCount = UdeskDBManager.getInstance().getMessageCount();
-                    UdeskDBManager.getInstance().updateSendFlagToFail();
-                    loadHistoryRecords(initViewMode);
-                    UdeskDBManager.getInstance().updateAllMsgRead();
+                    try {
+                        if (UdeskDBManager.getInstance().getSQLiteDatabase() == null) {
+                            UdeskDBManager.getInstance().init(getApplicationContext(), UdeskSDKManager.getInstance().getSdkToken(getApplicationContext()));
+                        }
+                        historyCount = UdeskDBManager.getInstance().getMessageCount();
+                        loadHistoryRecords(UdeskChatActivity.InitViewMode);
+                        UdeskDBManager.getInstance().updateAllMsgRead();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
 
                 }
             });
@@ -656,33 +1209,26 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     protected void onResume() {
         super.onResume();
         try {
+            UdeskConst.sdk_page_status = UdeskConst.SDK_PAGE_FOREGROUND;
+            UdeskBaseInfo.isNeedMsgNotice = false;
+            mInputEditView.clearFocus();
+            if (TextUtils.isEmpty(LQREmotionKit.getEmotionPath())) {
+                LQREmotionKit.init(getApplicationContext());
+            }
             if (UdeskSDKManager.getInstance().getImSetting() != null && !UdeskSDKManager.getInstance().getImSetting().getIs_worktime()) {
                 return;
             }
             if (mPresenter != null) {
                 mPresenter.bindReqsurveyMsg();
             }
-            if (isOverConversation && !isSurvyOperate) {
+            if (isInitComplete && !isSurvyOperate && !UdeskMessageManager.getInstance().isConnection()) {
                 mPresenter.createIMCustomerInfo();
             }
+            sendVideoMessage();
             registerNetWorkReceiver();
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    @Override
-    public boolean onTouch(View v, MotionEvent event) {
-        try {
-            if (v == mInputEditView && event.getAction() == MotionEvent.ACTION_DOWN) {
-                setUdeskAudioPanelVis(View.GONE);
-                setUdeskEmojisPannel(View.GONE);
-                emjoGridView.setVisibility(View.GONE);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
     }
 
 
@@ -690,17 +1236,63 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     public void onClick(View v) {
         try {
             //检查是否处在可发消息的状态
-            if (!isShowNotSendMsg()) {
-                UdeskUtils.hideSoftKeyboard(this, mInputEditView);
+            if (isbolcked != null && isbolcked.equals("true")) {
+                toBolckedView();
                 return;
             }
-            if (R.id.udesk_bottom_send == v.getId()) { //发送文本消息
+
+            if (isMoreTanSendCount() && isNeedQueueMessageSave()) {
+                UdeskUtils.showToast(getApplicationContext(),
+                        getResources().getString(R.string.udesk_in_the_line_max_send));
+                return;
+            }
+
+            if (!isShowNotSendMsg()) {
+                mEmotionKeyboard.hideSoftInput();
+                return;
+            }
+
+            if (v.getId() == R.id.udesk_img_audio) {
+                if (mBtnAudio.isShown()) {
+                    hideAudioButton();
+                    mInputEditView.requestFocus();
+                    if (mEmotionKeyboard != null) {
+                        mEmotionKeyboard.showSoftInput();
+                    }
+                } else {
+                    if (Build.VERSION.SDK_INT < 23) {
+                        showAudioButton();
+                        hideEmotionLayout();
+                        hideMoreLayout();
+                    } else {
+                        XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.AUDIO,
+                                new String[]{Manifest.permission.RECORD_AUDIO,
+                                        Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                new XPermissionUtils.OnPermissionListener() {
+                                    @Override
+                                    public void onPermissionGranted() {
+                                        showAudioButton();
+                                        hideEmotionLayout();
+                                        hideMoreLayout();
+                                    }
+
+                                    @Override
+                                    public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
+                                        Toast.makeText(UdeskChatActivity.this,
+                                                getResources().getString(R.string.aduido_denied),
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    }
+
+                }
+            } else if (R.id.udesk_bottom_send == v.getId()) { //发送文本消息
                 if (TextUtils.isEmpty(mInputEditView.getText().toString())) {
-                    UdeskUtils.showToast(UdeskChatActivity.this,
+                    UdeskUtils.showToast(getApplicationContext(),
                             getString(R.string.udesk_send_message_empty));
                     return;
                 }
-                if (currentStatusIsOnline) {
+                if (currentStatusIsOnline || isPresessionStatus || isNeedQueueMessageSave()) {
                     mPresenter.sendTxtMessage();
                 } else if (UdeskSDKManager.getInstance().getImSetting() != null &&
                         UdeskSDKManager.getInstance().getImSetting().getLeave_message_type().equals("msg")) {
@@ -710,119 +1302,13 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     }
                     mPresenter.sendLeaveMessage();
                 }
-            } else if (R.id.udesk_bottom_show_emoji == v.getId()) { // 显示表情面板
-
-                if (emojisPannel.getVisibility() == View.VISIBLE) {
-                    bottomoPannelBegginStatus();
-                } else {
-                    bottomoPannelBegginStatus();
-                    setUdeskEmojisPannel(View.VISIBLE);
+            } else if (R.id.navigation_survy == v.getId()) {
+                if (isPresessionStatus) {
+                    UdeskUtils.showToast(getApplicationContext(),
+                            getString(R.string.udesk_can_not_be_evaluated));
+                    return;
                 }
-                setUdeskEditClickabled(mInputEditView);
-                UdeskUtils.hideSoftKeyboard(this, mInputEditView);
-            } else if (R.id.udesk_bottom_option_photo == v.getId()) {  //选择本地的图片
-                if (Build.VERSION.SDK_INT < 23) {
-                    selectPhoto();
-                    bottomoPannelBegginStatus();
-                } else {
-                    XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.EXTERNAL,
-                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            new XPermissionUtils.OnPermissionListener() {
-                                @Override
-                                public void onPermissionGranted() {
-                                    selectPhoto();
-                                    bottomoPannelBegginStatus();
-                                }
-
-                                @Override
-                                public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
-                                    Toast.makeText(UdeskChatActivity.this,
-                                            getResources().getString(R.string.photo_denied),
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                }
-
-            } else if (R.id.udesk_bottom_option_camera == v.getId()) { // 拍照发送图片
-                if (Build.VERSION.SDK_INT < 23) {
-                    takePhoto();
-                    bottomoPannelBegginStatus();
-                } else {
-                    XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.CAMERA,
-                            new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            new XPermissionUtils.OnPermissionListener() {
-                                @Override
-                                public void onPermissionGranted() {
-                                    takePhoto();
-                                    bottomoPannelBegginStatus();
-                                }
-
-                                @Override
-                                public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
-                                    Toast.makeText(UdeskChatActivity.this,
-                                            getResources().getString(R.string.camera_denied),
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                }
-            } else if (R.id.udesk_bottom_voice_rl == v.getId()) {  //录音 发送语音
-                if (Build.VERSION.SDK_INT < 23) {
-                    if (audioPanel.getVisibility() == View.VISIBLE) {
-                        bottomoPannelBegginStatus();
-                    } else {
-                        bottomoPannelBegginStatus();
-                        initAduioPannel();
-                    }
-                } else {
-                    XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.AUDIO,
-                            new String[]{Manifest.permission.RECORD_AUDIO,
-                                    Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            new XPermissionUtils.OnPermissionListener() {
-                                @Override
-                                public void onPermissionGranted() {
-                                    if (audioPanel.getVisibility() == View.VISIBLE) {
-                                        bottomoPannelBegginStatus();
-                                    } else {
-                                        bottomoPannelBegginStatus();
-                                        initAduioPannel();
-                                    }
-                                }
-
-                                @Override
-                                public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
-                                    Toast.makeText(UdeskChatActivity.this,
-                                            getResources().getString(R.string.aduido_denied),
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                }
-            } else if (R.id.udesk_bottom_survy_rl == v.getId()) {
-                if (mPresenter != null && isPermmitSurvy) {
-                    setIsPermmitSurvy(false);
-                    mPresenter.getHasSurvey(mAgentInfo.getAgent_id(), null);
-                }
-            } else if (R.id.udesk_bottom_option_file == v.getId()) {
-                if (Build.VERSION.SDK_INT < 23) {
-                    selectFile();
-                    bottomoPannelBegginStatus();
-                } else {
-                    XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.EXTERNAL,
-                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            new XPermissionUtils.OnPermissionListener() {
-                                @Override
-                                public void onPermissionGranted() {
-                                    selectFile();
-                                    bottomoPannelBegginStatus();
-                                }
-
-                                @Override
-                                public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
-                                    Toast.makeText(UdeskChatActivity.this,
-                                            getResources().getString(R.string.file_denied),
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                }
+                clickSurvy();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -832,77 +1318,264 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
     }
 
-    // 长按录音
-    @Override
-    public boolean onLongClick(View v) {
+
+    //点击拍摄入口
+    private void clickCamera() {
+
+        if (Build.VERSION.SDK_INT < 23) {
+            takePhoto();
+            bottomoPannelBegginStatus();
+        } else {
+            XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.CAMERA,
+                    new String[]{Manifest.permission.CAMERA,
+                            Manifest.permission.RECORD_AUDIO,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    new XPermissionUtils.OnPermissionListener() {
+                        @Override
+                        public void onPermissionGranted() {
+                            takePhoto();
+                            bottomoPannelBegginStatus();
+                        }
+
+                        @Override
+                        public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
+                            Toast.makeText(UdeskChatActivity.this,
+                                    getResources().getString(R.string.camera_denied),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
+    }
+
+    //点击相册入口
+    private void clickPhoto() {
         try {
-            if (v.getId() == R.id.udesk_audio_pop) {
-                if (!UdeskUtils.checkSDcard()) {
-                    Toast.makeText(this,
-                            getResources().getString(R.string.udesk_label_no_sd),
-                            Toast.LENGTH_LONG).show();
-                    return false;
-                }
+            if (Build.VERSION.SDK_INT < 23) {
+                selectPhoto();
+                bottomoPannelBegginStatus();
+            } else {
+                XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.EXTERNAL,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        new XPermissionUtils.OnPermissionListener() {
+                            @Override
+                            public void onPermissionGranted() {
+                                selectPhoto();
+                                bottomoPannelBegginStatus();
+                            }
 
-                if (Build.VERSION.SDK_INT < 23) {
-                    recordVoiceStart();
-                } else {
-                    XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.AUDIO,
-                            new String[]{Manifest.permission.RECORD_AUDIO,
-                                    Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            new XPermissionUtils.OnPermissionListener() {
-                                @Override
-                                public void onPermissionGranted() {
-                                    recordVoiceStart();
-                                }
+                            @Override
+                            public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
+                                Toast.makeText(UdeskChatActivity.this,
+                                        getResources().getString(R.string.photo_denied),
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            }
+        } catch (Resources.NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
 
-                                @Override
-                                public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
-                                    Toast.makeText(UdeskChatActivity.this,
-                                            getResources().getString(R.string.aduido_denied),
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                }
-                return true;
+    //点击文件入口
+    private void clickFile() {
+        try {
+            if (Build.VERSION.SDK_INT < 23) {
+                selectFile();
+                bottomoPannelBegginStatus();
+            } else {
+                XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.EXTERNAL,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        new XPermissionUtils.OnPermissionListener() {
+                            @Override
+                            public void onPermissionGranted() {
+                                selectFile();
+                                bottomoPannelBegginStatus();
+                            }
+
+                            @Override
+                            public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
+                                Toast.makeText(UdeskChatActivity.this,
+                                        getResources().getString(R.string.file_denied),
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            }
+        } catch (Resources.NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //点击评价入口
+    private void clickSurvy() {
+        try {
+            if (mPresenter != null && isPermmitSurvy && mAgentInfo != null) {
+                setIsPermmitSurvy(false);
+                mPresenter.getHasSurvey(mAgentInfo.getAgent_id(), null);
+            } else {
+                Toast.makeText(UdeskChatActivity.this,
+                        getResources().getString(R.string.udesk_survey_error),
+                        Toast.LENGTH_SHORT).show();
+            }
+        } catch (Resources.NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //点击位置入口
+    private void clickLocation() {
+        try {
+            //地理位置信息打开的页面 由客户传入  并通过Activity方式 来传递数据
+            if (UdeskSDKManager.getInstance().getUdeskConfig().cls != null) {
+                Intent intent = new Intent(UdeskChatActivity.this, UdeskSDKManager.getInstance().getUdeskConfig().cls);
+                startActivityForResult(intent, SELECT_LOCATION_OPTION_REQUEST_CODE);
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } catch (OutOfMemoryError error) {
-            error.printStackTrace();
         }
-        return false;
+    }
+
+    //点击视频的入口
+    public void startVideo() {
+        try {
+            if (isOpenVideo()) {
+                Intent intent = new Intent();
+                intent.setClass(getApplicationContext(), Class.forName("udesk.udeskvideo.UdeskVideoActivity"));
+                intent.putExtra(UdeskConst.IsInivte, true);
+                intent.putExtra(UdeskConst.ChannelName, UUID.randomUUID().toString().replaceAll("-", ""));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+                startActivity(intent);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    //电话呼叫
+    public void callphone(final String mobile) {
+        try {
+            if (Build.VERSION.SDK_INT < 23) {
+                Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse(mobile));
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return;
+                }
+                UdeskChatActivity.this.startActivity(intent);
+            } else {
+                XPermissionUtils.requestPermissions(UdeskChatActivity.this, RequestCode.CallPhone,
+                        new String[]{Manifest.permission.CALL_PHONE},
+                        new XPermissionUtils.OnPermissionListener() {
+                            @Override
+                            public void onPermissionGranted() {
+                                Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse(mobile));
+                                if (ActivityCompat.checkSelfPermission(UdeskChatActivity.this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                                    return;
+                                }
+                                UdeskChatActivity.this.startActivity(intent);
+                            }
+
+                            @Override
+                            public void onPermissionDenied(String[] deniedPermissions, boolean alwaysDenied) {
+                                Toast.makeText(UdeskChatActivity.this,
+                                        getResources().getString(R.string.call_denied),
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position,
-                            long id) {
-        try {
-            if (parent == emjoGridView) {
-                if (mPresenter != null) {
-                    mPresenter.clickEmoji(id, mEmojiAdapter.getCount(),
-                            mEmojiAdapter.getItem((int) id));
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } catch (OutOfMemoryError error) {
-            error.printStackTrace();
-        }
+    public void onEmojiSelected(String key) {
 
     }
+
+    @Override
+    public void onStickerSelected(String categoryName, String stickerName, String bitmapPath) {
+        try {
+            mPresenter.sendFileMessage(bitmapPath, UdeskConst.ChatMsgTypeString.TYPE_IMAGE);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         try {
+            if (isMoreTanSendCount() && isNeedQueueMessageSave()) {
+                UdeskUtils.showToast(getApplicationContext(), getMoreThanSendTip());
+                return;
+            }
             if (CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE == requestCode) { //拍照后发生图片
                 if (Activity.RESULT_OK == resultCode) {
-                    if (data != null && data.hasExtra("data") && data.getParcelableExtra("data") != null && mPresenter != null) {
+                    if (mPresenter != null && photoUri != null && photoUri.getPath() != null) {
+                        if (UdeskSDKManager.getInstance().getUdeskConfig().isScaleImg) {
+                            mPresenter.scaleBitmap(UdeskUtil.parseOwnUri(photoUri, UdeskChatActivity.this, cameraFile));
+                        } else {
+                            mPresenter.sendFileMessage(UdeskUtil.parseOwnUri(photoUri, UdeskChatActivity.this, cameraFile), UdeskConst.ChatMsgTypeString.TYPE_IMAGE);
+                        }
+                    } else if (data != null && data.hasExtra("data") && data.getParcelableExtra("data") != null && data.getParcelableExtra("data") instanceof Bitmap && mPresenter != null) {
                         mPresenter.sendBitmapMessage((Bitmap) data.getParcelableExtra("data"));
                     }
-                    if (mPresenter != null && photoUri != null && photoUri.getPath() != null) {
-                        mPresenter.sendBitmapMessage(UdeskUtil.parseOwnUri(photoUri, UdeskChatActivity.this,cameraFile));
+
+                }
+            } else if (CAPTURE_IMAGE_SMALLVIDEO_ACTIVITY_REQUEST_CODE == requestCode) {
+
+                if (resultCode != Activity.RESULT_OK || data == null) {
+                    return;
+                }
+                Bundle bundle = data.getBundleExtra(UdeskConst.SEND_BUNDLE);
+                if (bundle != null) {
+
+                    isNeedOpenLocalCamera = bundle.getBoolean(UdeskConst.Camera_Error);
+
+                    String type = bundle.getString(UdeskConst.SEND_SMALL_VIDEO);
+                    if (type.equals(UdeskConst.SMALL_VIDEO)) {
+                        String path = bundle.getString(UdeskConst.PREVIEW_Video_Path);
+                        mPresenter.sendFileMessage(path, UdeskConst.ChatMsgTypeString.TYPE_VIDEO);
+                    } else if (type.equals(UdeskConst.PICTURE)) {
+                        String path = bundle.getString(UdeskConst.BitMapData);
+                        mPresenter.sendFileMessage(path, UdeskConst.ChatMsgTypeString.TYPE_IMAGE);
+                    }
+                }
+
+            } else if (SELECT_UDESK_IMAGE_ACTIVITY_REQUEST_CODE == requestCode) {
+                if (resultCode != Activity.RESULT_OK || data == null) {
+                    return;
+                }
+                Bundle bundle = data.getBundleExtra(UdeskConst.SEND_BUNDLE);
+                if (bundle != null) {
+                    ArrayList<LocalMedia> localMedias = bundle.getParcelableArrayList(UdeskConst.SEND_PHOTOS);
+                    boolean isOrgin = bundle.getBoolean(UdeskConst.SEND_PHOTOS_IS_ORIGIN, false);
+
+                    for (LocalMedia media : localMedias) {
+                        final String pictureType = media.getPictureType();
+                        final int mediaMimeType = UdeskUtil.isPictureType(pictureType);
+                        if (mediaMimeType == UdeskUtil.TYPE_VIDEO) {
+                            double size = UdeskUtils.getFileSize(new File(media.getPath()));
+                            if (size >= 30 * 1024 * 1024) {
+                                Toast.makeText(getApplicationContext(), getString(R.string.udesk_file_to_large), Toast.LENGTH_SHORT).show();
+                                break;
+                            }
+                            mPresenter.sendFileMessage(media.getPath(), UdeskConst.ChatMsgTypeString.TYPE_VIDEO);
+                        } else if (mediaMimeType == UdeskUtil.TYPE_IMAGE) {
+                            if (isOrgin) {
+                                mPresenter.sendFileMessage(media.getPath(), UdeskConst.ChatMsgTypeString.TYPE_IMAGE);
+                            } else {
+                                mPresenter.scaleBitmap(media.getPath());
+                            }
+                        }
                     }
 
                 }
@@ -915,7 +1588,11 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     try {
                         if (mImageCaptureUri != null) {
                             String path = UdeskUtil.getFilePath(this, mImageCaptureUri);
-                            mPresenter.sendBitmapMessage(path);
+                            if (UdeskSDKManager.getInstance().getUdeskConfig().isScaleImg) {
+                                mPresenter.scaleBitmap(path);
+                            } else {
+                                mPresenter.sendFileMessage(path, UdeskConst.ChatMsgTypeString.TYPE_IMAGE);
+                            }
                         }
 
                     } catch (Exception e) {
@@ -936,14 +1613,6 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     }
                 }
 
-            } else if (SELECT_SURVY_OPTION_REQUEST_CODE == requestCode) {
-                setIsPermmitSurvy(true);
-                if (resultCode != Activity.RESULT_OK || data == null) {
-                    return;
-                }
-                Toast.makeText(getApplicationContext(), getString(R.string.udesk_thanks_survy), Toast.LENGTH_SHORT).show();
-                String optionId = data.getStringExtra(UdeskConst.SurvyOptionIDKey);
-                mPresenter.putIMSurveyResult(optionId);
             } else if (SELECT_FILE_OPTION_REQUEST_CODE == requestCode) {
                 if (resultCode != Activity.RESULT_OK || data == null) {
                     return;
@@ -953,12 +1622,8 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     try {
                         if (mImageCaptureUri != null) {
                             String path = UdeskUtil.getFilePath(this, mImageCaptureUri);
-                            double size = UdeskUtil.getFileSize(new File(path));
-                            if (size >= 30 * 1024 * 1024) {
-                                Toast.makeText(getApplicationContext(), getString(R.string.udesk_file_to_large), Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-                            if (UdeskUtil.isGpsNet(getApplicationContext())) {
+                            if (this.getWindow() != null && this.getWindow().getDecorView() != null &&
+                                    this.getWindow().getDecorView().getWindowToken() != null && UdeskUtil.isGpsNet(getApplicationContext())) {
                                 toGpsNetView(true, null, path);
                                 return;
                             }
@@ -971,6 +1636,19 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         error.printStackTrace();
                     }
                 }
+            } else if (SELECT_LOCATION_OPTION_REQUEST_CODE == requestCode) {
+                if (resultCode != Activity.RESULT_OK || data == null) {
+                    return;
+                }
+
+                String postionValue = data.getStringExtra(UdeskConfig.UdeskMapIntentName.Position);
+                String bitmapDir = data.getStringExtra(UdeskConfig.UdeskMapIntentName.BitmapDIR);
+                double latitude = data.getDoubleExtra(UdeskConfig.UdeskMapIntentName.Latitude, 0.0);
+                double longitude = data.getDoubleExtra(UdeskConfig.UdeskMapIntentName.Longitude, 0.0);
+
+                mPresenter.sendLocationMessage(latitude, longitude, postionValue, bitmapDir);
+
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -983,6 +1661,14 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
     private void sendFile(String path) {
         try {
+            double size = UdeskUtils.getFileSize(new File(path));
+            if (size >= 30 * 1024 * 1024) {
+                Toast.makeText(getApplicationContext(), getString(R.string.udesk_file_to_large), Toast.LENGTH_SHORT).show();
+                return;
+            }else if (size ==0){
+                UdeskUtils.showToast(getApplicationContext(), getResources().getString(R.string.udesk_file_not_exist));
+                return;
+            }
             if (path.contains(".mp4") && mPresenter != null) {
                 mPresenter.sendFileMessage(path, UdeskConst.ChatMsgTypeString.TYPE_VIDEO);
             } else {
@@ -993,6 +1679,37 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         } catch (OutOfMemoryError error) {
             error.printStackTrace();
         }
+    }
+
+    @Override
+    public void initLoadData() {
+        try {
+            offset = -1;
+            historyCount = UdeskDBManager.getInstance().getMessageCount();
+            loadHistoryRecords(UdeskChatActivity.InitViewMode);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public int getAgentSeqNum() {
+
+        try {
+            if (mChatAdapter != null) {
+                List<MessageInfo> listMessages = mChatAdapter.getList();
+                for (int i = listMessages.size() - 1; i > 0; i--) {
+                    MessageInfo messageUI = listMessages.get(i);
+                    if (messageUI.getDirection() == UdeskConst.ChatMsgDirection.Recv) {
+                        return messageUI.getSeqNum();
+                    }
+                }
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     /**
@@ -1009,14 +1726,18 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                 mListView.setSelection(0);
             } else {
                 // 还有老数据
+                int pageNum = UdeskConst.UDESK_HISTORY_COUNT;
                 if (offset == -1) {
                     offset = historyCount - UdeskConst.UDESK_HISTORY_COUNT;
                 } else {
+                    if (offset - UdeskConst.UDESK_HISTORY_COUNT < 0) {
+                        pageNum = offset;
+                    }
                     offset = offset - UdeskConst.UDESK_HISTORY_COUNT;
                 }
                 offset = (offset < 0 ? 0 : offset);
                 List<MessageInfo> list = UdeskDBManager.getInstance().getMessages(
-                        offset, UdeskConst.UDESK_HISTORY_COUNT);
+                        offset, pageNum);
                 if (list != null) {
                     Message msg = Message.obtain();
                     msg.what = MessageWhat.loadHistoryDBMsg;
@@ -1051,6 +1772,7 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         try {
             if (commodity != null && mPresenter != null) {
                 mPresenter.sendCommodityMessage(commodity);
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1059,14 +1781,44 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
+    private void sendProduct(Product product) {
+        try {
+            if (product != null && mPresenter != null) {
+                mPresenter.sendProductMessage(product);
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } catch (OutOfMemoryError error) {
+            error.printStackTrace();
+        }
+    }
+
+    //客户设置的第一句默认消息
+    private void sendDefualtMessage() {
+        try {
+            if (!TextUtils.isEmpty(UdeskSDKManager.getInstance().getUdeskConfig().firstMessage) && mPresenter != null) {
+                mPresenter.sendTxtMessage(UdeskSDKManager.getInstance().getUdeskConfig().firstMessage);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     //启动手机默认的选择照片
     private void selectPhoto() {
         try {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("image/*");
-            startActivityForResult(intent, SELECT_IMAGE_ACTIVITY_REQUEST_CODE);
+            if (Build.VERSION.SDK_INT < 21) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("image/*");
+                startActivityForResult(intent, SELECT_IMAGE_ACTIVITY_REQUEST_CODE);
+            } else {
+                Intent intent = new Intent();
+                intent.setClass(UdeskChatActivity.this, PhotoSelectorActivity.class);
+                startActivityForResult(intent, SELECT_UDESK_IMAGE_ACTIVITY_REQUEST_CODE);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         } catch (OutOfMemoryError error) {
@@ -1077,16 +1829,25 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     // 启动手机相机拍照
     private void takePhoto() {
         try {
-            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            cameraFile = UdeskUtil.cameaFile(UdeskChatActivity.this);
-            photoUri = UdeskUtil.getOutputMediaFileUri(UdeskChatActivity.this,cameraFile);
-            if (Build.VERSION.SDK_INT >= 24) {
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            if (isNeedOpenLocalCamera || Build.VERSION.SDK_INT < 21 || !UdeskSDKManager.getInstance().getUdeskConfig().isUseSmallVideo) {
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                cameraFile = UdeskUtil.cameraFile(getApplicationContext());
+                photoUri = UdeskUtil.getOutputMediaFileUri(UdeskChatActivity.this, cameraFile);
+                if (Build.VERSION.SDK_INT >= 24) {
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                }
+                if (photoUri != null) {
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+                } else {
+                    return;
+                }
+                startActivityForResult(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+            } else {
+                Intent intent = new Intent();
+                intent.setClass(getApplicationContext(), UdeskCameraActivity.class);
+                startActivityForResult(intent, CAPTURE_IMAGE_SMALLVIDEO_ACTIVITY_REQUEST_CODE);
             }
-            if (photoUri != null) {
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-            }
-            startActivityForResult(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+
         } catch (Exception e) {
             e.printStackTrace();
         } catch (OutOfMemoryError error) {
@@ -1099,7 +1860,7 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         try {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("video/*");
+            intent.setType("*/*");
             Intent wrapperIntent = Intent.createChooser(intent, null);
             startActivityForResult(wrapperIntent, SELECT_FILE_OPTION_REQUEST_CODE);
         } catch (Exception e) {
@@ -1111,18 +1872,47 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
 
     //启动满意度调查
-    private void toLuanchSurveyActivity(SurveyOptionsModel surveyOptions) {
+    private void toLuanchSurveyView(SurveyOptionsModel surveyOptions) {
         try {
-            if (surveyOptions.getOptions() == null || surveyOptions.getOptions().isEmpty()) {
+            setIsPermmitSurvy(true);
+            if (surveyOptions.getOptions() == null || surveyOptions.getOptions().isEmpty()
+                    || surveyOptions.getType().isEmpty()) {
                 UdeskUtils.showToast(this,
                         getString(R.string.udesk_no_set_survey));
-                setIsPermmitSurvy(true);
                 return;
             }
-            Intent intent = new Intent();
-            intent.setClass(UdeskChatActivity.this, UdeskSurvyDialogActivity.class);
-            intent.putExtra(UdeskConst.SurvyDialogKey, surveyOptions);
-            startActivityForResult(intent, SELECT_SURVY_OPTION_REQUEST_CODE);
+            showSurveyPopWindow(surveyOptions);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    WindowManager.LayoutParams params;
+
+    private void showSurveyPopWindow(SurveyOptionsModel surveyOptions) {
+
+        try {
+            UdeskSurvyPopwindow udeskSurvyPopwindow = new UdeskSurvyPopwindow(this, surveyOptions, new UdeskSurvyPopwindow.SumbitSurvyCallBack() {
+
+                @Override
+                public void sumbitSurvyCallBack(String optionId, String show_type, String survey_remark, String tags) {
+                    mPresenter.putIMSurveyResult(optionId, show_type, survey_remark, tags);
+                }
+            });
+            if (findViewById(R.id.udesk_im_content).getWindowToken() != null) {
+                udeskSurvyPopwindow.showAtLocation(findViewById(R.id.udesk_im_content), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0);
+                params = getWindow().getAttributes();
+                params.alpha = 0.7f;
+                getWindow().setAttributes(params);
+                udeskSurvyPopwindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+                    @Override
+                    public void onDismiss() {
+                        params = getWindow().getAttributes();
+                        params.alpha = 1f;
+                        getWindow().setAttributes(params);
+                    }
+                });
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1138,8 +1928,9 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
             if (UdeskChatActivity.this.isFinishing()) {
                 return;
             }
-            if (!bolckedWindow.isShowing()) {
-                bolckedWindow.show(this, this.getWindow().getDecorView(),
+            if (!popWindow.isShowing() && this.getWindow() != null
+                    && this.getWindow().getDecorView() != null && this.getWindow().getDecorView().getWindowToken() != null) {
+                popWindow.show(this, this.getWindow().getDecorView(),
                         positiveLabel, negativeLabel, title,
                         new OnPopConfirmClick() {
                             public void onPositiveClick() {
@@ -1148,6 +1939,17 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
                             @Override
                             public void onNegativeClick() {
+                                popWindow.dismiss();
+                            }
+
+                            @Override
+                            public void callTelPhone(String phone) {
+
+                            }
+
+                            @Override
+                            public void toWebViewAcivity(String mUrl) {
+
                             }
 
                         });
@@ -1157,12 +1959,25 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
+    //延期弹出提示框
+    private void delayShowtips(Handler handler) {
+        try {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    confirmToForm();
+                }
+            }, 500);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     private void toGpsNetView(final boolean isupload, final MessageInfo info, final String path) {
         try {
             String positiveLabel = this.getString(R.string.udesk_sure);
             String negativeLabel = this.getString(R.string.udesk_cancel);
-            String content = "";
+            String content;
             if (isupload) {
                 content = getApplicationContext().getString(R.string.udesk_gps_tips);
             } else {
@@ -1172,21 +1987,36 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
             if (UdeskChatActivity.this.isFinishing()) {
                 return;
             }
-            if (!bolckedWindow.isShowing()) {
-                bolckedWindow.show(this, this.getWindow().getDecorView(),
+            if (!popWindow.isShowing()) {
+                popWindow.show(this, this.getWindow().getDecorView(),
                         positiveLabel, negativeLabel, content,
                         new OnPopConfirmClick() {
                             public void onPositiveClick() {
-                                if (isupload && !TextUtils.isEmpty(path)) {
-                                    sendFile(path);
-                                }
-                                if (!isupload && info != null && mPresenter != null) {
-                                    mPresenter.downFile(info);
+                                try {
+                                    if (isupload && !TextUtils.isEmpty(path)) {
+                                        sendFile(path);
+                                    }
+                                    if (!isupload && info != null && mPresenter != null) {
+                                        mPresenter.downFile(info);
+                                    }
+                                } catch (Exception e) {
+                                    e.printStackTrace();
                                 }
                             }
 
                             @Override
                             public void onNegativeClick() {
+                                popWindow.dismiss();
+                            }
+
+                            @Override
+                            public void callTelPhone(String phone) {
+
+                            }
+
+                            @Override
+                            public void toWebViewAcivity(String mUrl) {
+
                             }
 
                         });
@@ -1199,8 +2029,12 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     private Runnable myRunnable = new Runnable() {
         @Override
         public void run() {
-            if (mPresenter != null) {
-                mPresenter.getAgentInfo();
+            try {
+                if (mPresenter != null) {
+                    mPresenter.getAgentInfo(pre_session_id, null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     };
@@ -1256,6 +2090,25 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
+    private void changeVideoThumbnail(String msgId) {
+        try {
+            if (!TextUtils.isEmpty(msgId) && mListView != null
+                    && mChatAdapter != null) {
+                for (int i = mListView.getChildCount() - 1; i >= 0; i--) {
+                    View child = mListView.getChildAt(i);
+                    if (child != null) {
+                        if (mChatAdapter.changeVideoThumbnail(child, msgId)) {
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } catch (OutOfMemoryError error) {
+            error.printStackTrace();
+        }
+    }
 
     /**
      * 根据消息的ID 修改发送状态
@@ -1287,30 +2140,35 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     // 判断可发送消息
     private boolean isShowNotSendMsg() {
         try {
-            if (isbolcked != null && isbolcked.equals("true")) {
-                toBolckedView();
-                return false;
-            }
-            if (!isInitComplete) {
-                UdeskUtils.showToast(this,
-                        getResources().getString(R.string.udesk_agent_inti));
-                return false;
-            }
+
             if (!UdeskUtils.isNetworkConnected(this)) {
-                UdeskUtils.showToast(this,
+                UdeskUtils.showToast(getApplicationContext(),
                         getResources().getString(R.string.udesk_has_wrong_net));
                 return false;
             }
 
-            if (isOverConversation) {
-                UdeskUtils.showToast(this,
-                        getResources().getString(R.string.udesk_agent_inti));
-                isInitComplete = false;
-                isOverConversation = false;
-                mPresenter.createIMCustomerInfo();
+            if (isMoreTanSendCount() && isNeedQueueMessageSave()) {
+                UdeskUtils.showToast(getApplicationContext(),
+                        getResources().getString(R.string.udesk_in_the_line_max_send));
                 return false;
             }
 
+            if (!isInitComplete) {
+                UdeskUtils.showToast(getApplicationContext(),
+                        getResources().getString(R.string.udesk_agent_inti));
+                return false;
+            }
+
+            if (!TextUtils.isEmpty(pre_session_id)) {
+                return true;
+            }
+            if (isNeedQueueMessageSave()) {
+                return true;
+            }
+            if (isOverConversation) {
+                reCreateIMCustomerInfo();
+                return false;
+            }
             if (!currentStatusIsOnline && !isleaveMessageTypeMsg()) {
                 confirmToForm();
                 return false;
@@ -1322,48 +2180,43 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         return true;
     }
 
+    /**
+     * 重新创建会话
+     */
+    private void reCreateIMCustomerInfo() {
+        UdeskUtils.showToast(getApplicationContext(),
+                getResources().getString(R.string.udesk_agent_inti));
+        isInitComplete = false;
+        isOverConversation = false;
+        mPresenter.createIMCustomerInfo();
+    }
 
-    //开始录音
-    private void recordVoiceStart() {
+    private boolean isOpenLeaveMsg() {
+        boolean isOpen = false;
         try {
-            if (mRecordFilePlay != null) {
-                showStartOrStopAnaimaition(
-                        mRecordFilePlay.getPlayAduioMessage(), false);
-                recycleVoiceRes();
-            }
-            setAudiotipsVis(View.GONE);
-            setHorVoiceViewVis(View.VISIBLE);
-            setAudioCancleViewVis(View.VISIBLE);
-
-            if (audioCancle != null) {
-                audioPop.setOnTouchListener(new RecordTouchListener(this,
-                        UdeskChatActivity.this, audioCancle));
-                if (mPresenter != null) {
-                    // 开始录音
-                    mPresenter.recordStart();
-                    if (mHorVoiceView != null) {
-                        mHorVoiceView.startRecording(this);
-                    }
-                }
-
+            SDKIMSetting imsetting = UdeskSDKManager.getInstance().getImSetting();
+            if (imsetting != null) {
+                isOpen = imsetting.getEnable_web_im_feedback();
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } catch (OutOfMemoryError error) {
-            error.printStackTrace();
         }
-
+        return isOpen;
     }
 
     //弹出表单留言的提示框
     private void confirmToForm() {
         try {
-            boolean isOpen = true;
+            boolean isOpen;
             SDKIMSetting imsetting = UdeskSDKManager.getInstance().getImSetting();
+            //是否弹出表单： 如果获取到管理员的配置，使用管理员的配置。没获取到则使用配置中默认设置
             if (imsetting != null) {
                 isOpen = imsetting.getEnable_web_im_feedback();
+            } else {
+                isOpen = UdeskSDKManager.getInstance().getUdeskConfig().isUserForm;
             }
-            if (UdeskSDKManager.getInstance().getFormCallBak() != null) {
+            //如果客户设置了回调处理留言系统，一定设置true
+            if (UdeskSDKManager.getInstance().getUdeskConfig().formCallBack != null) {
                 isOpen = true;
             }
             String positiveLabel = this.getString(R.string.udesk_sure);
@@ -1371,15 +2224,16 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                 positiveLabel = this.getString(R.string.udesk_ok);
             }
             String negativeLabel = this.getString(R.string.udesk_cancel);
-            String title = "";
+            String title;
             if (isOpen) {
-                if (!TextUtils.isEmpty(UdeskConfig.UdeskLeavingMsg)) {
-                    title = UdeskConfig.UdeskLeavingMsg;
+                if (imsetting != null && !TextUtils.isEmpty(imsetting.getLeave_message_guide())) {
+                    title = imsetting.getLeave_message_guide();
                 } else {
                     title = this.getString(R.string.udesk_msg_offline_to_form);
                 }
             } else {
-                if (!TextUtils.isEmpty(imsetting.getNo_reply_hint())) {
+                //关闭留言的文案,如果获取到后台的设置，则使用后台的设置，没获取的后台的，本地客户设置了，则使用客户的设置文案。否则用默认的文案
+                if (imsetting != null && !TextUtils.isEmpty(imsetting.getNo_reply_hint())) {
                     title = imsetting.getNo_reply_hint();
                 } else {
                     title = this.getString(R.string.udesk_msg_busy_default_to_form);
@@ -1394,22 +2248,86 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
             if (UdeskChatActivity.this.isFinishing()) {
                 return;
             }
-            if (!formWindow.isShowing()) {
-                formWindow.show(this, this.getWindow().getDecorView(),
-                        positiveLabel, negativeLabel, title,
+            if (!popWindow.isShowing() && this.getWindow() != null && this.getWindow().getDecorView() != null
+                    && this.getWindow().getDecorView().getWindowToken() != null) {
+                final String finalPositiveLabel = positiveLabel;
+                popWindow.show(this, this.getWindow().getDecorView(),
+                        finalPositiveLabel, negativeLabel, title,
                         new OnPopConfirmClick() {
                             public void onPositiveClick() {
-                                goToForm();
-                                if (mPresenter != null) {
-                                    mPresenter.quitQuenu();
+                                try {
+                                    dismissFormWindow();
+                                    if (UdeskSDKManager.getInstance().getUdeskConfig().formCallBack != null) {
+                                        UdeskSDKManager.getInstance().getUdeskConfig().formCallBack.toLuachForm(UdeskChatActivity.this);
+                                        return;
+                                    }
+                                    if (finalPositiveLabel.equals(UdeskChatActivity.this.getString(R.string.udesk_ok))) {
+                                        leaveMessage();
+                                    }
+                                } catch (Exception e) {
+                                    e.printStackTrace();
                                 }
                             }
 
                             @Override
                             public void onNegativeClick() {
+                                popWindow.dismiss();
+                            }
+
+                            @Override
+                            public void callTelPhone(String phone) {
+                                try {
+                                    popWindow.dismiss();
+                                    callphone(phone);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            @Override
+                            public void toWebViewAcivity(String mUrl) {
+                                try {
+                                    popWindow.dismiss();
+                                    Intent intent = new Intent(UdeskChatActivity.this, UdeskWebViewUrlAcivity.class);
+                                    intent.putExtra(UdeskConst.WELCOME_URL, mUrl);
+                                    startActivity(intent);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
                             }
 
                         });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void leaveMessage() {
+        try {
+            if (UdeskSDKManager.getInstance().getUdeskConfig().formCallBack != null) {
+                UdeskSDKManager.getInstance().getUdeskConfig().formCallBack.toLuachForm(UdeskChatActivity.this);
+                return;
+            }
+            if (isleaveMessageTypeMsg()) {
+                //直接留言
+                isInTheQueue = false;
+                if (mAgentInfo != null) {
+                    mAgentInfo = null;
+                }
+                if (mHandler != null && myRunnable != null) {
+                    mHandler.removeCallbacks(myRunnable);
+                }
+                if (mPresenter != null) {
+                    mPresenter.quitQuenu(UdeskConfig.UdeskQuenuFlag.FORCE_QUIT);
+                    mPresenter.addLeavMsgWeclome(UdeskSDKManager.getInstance().getImSetting().getLeave_message_guide());
+                }
+                setUdeskImContainerVis(View.GONE);
+                setTitlebar(getString(R.string.udesk_ok), "off");
+
+            } else {
+                goToForm();
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1420,23 +2338,15 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     protected void goToForm() {
         try {
             dismissFormWindow();
-            if (UdeskSDKManager.getInstance().getFormCallBak() != null) {
-                UdeskSDKManager.getInstance().getFormCallBak().toLuachForm(UdeskChatActivity.this);
-                return;
-            }
-            if (UdeskSDKManager.getInstance().getImSetting() != null && !UdeskSDKManager.getInstance().getImSetting().getEnable_web_im_feedback()) {
-                return;
-            }
-            UdeskSDKManager.getInstance().goToForm(UdeskChatActivity.this);
+            UdeskSDKManager.getInstance().goToForm(getApplicationContext(), UdeskSDKManager.getInstance().getUdeskConfig());
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     private void dismissFormWindow() {
-        if (formWindow != null) {
-            formWindow.dismiss();
+        if (popWindow != null) {
+            popWindow.dismiss();
         }
     }
 
@@ -1470,6 +2380,7 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                 @Override
                 public void run() {
                     isInitComplete = true;
+                    isInTheQueue = false;
                     setTitlebar(getResources().getString(
                             R.string.udesk_api_error), "off");
                     if (!TextUtils.isEmpty(failMsg)) {
@@ -1482,6 +2393,35 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         } catch (OutOfMemoryError error) {
             error.printStackTrace();
         }
+    }
+
+    @Override
+    public void updatePreSessionStatus(String pre_session_id) {
+        isInitComplete = true;
+        if (TextUtils.isEmpty(pre_session_id)) {
+            this.pre_session_id = "";
+            isPresessionStatus = false;
+        } else {
+            this.pre_session_id = pre_session_id;
+            isPresessionStatus = true;
+        }
+
+    }
+
+
+    @Override
+    public boolean getPressionStatus(MessageInfo msg) {
+        try {
+            if (isPresessionStatus || isOverConversation) {
+                JSONObject preMessage = JsonObjectUtils.buildPreSessionInfo(msg.getMsgtype(), msg.getMsgContent(), msg.getMsgId(),
+                        msg.getDuration(), pre_session_id, msg.getFilename(), msg.getFilesize());
+                mPresenter.getAgentInfo(pre_session_id, preMessage);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return isPresessionStatus;
     }
 
     /**
@@ -1619,116 +2559,21 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
 
     @Override
-    public void refreshInputEmjio(String s) {
-        try {
-            if (UDEmojiAdapter.replaceEmoji(this, s,
-                    (int) mInputEditView.getTextSize()) != null){
-                mInputEditView.setText(UDEmojiAdapter.replaceEmoji(this, s,
-                        (int) mInputEditView.getTextSize()));
-            }else{
-                mInputEditView.setText(s);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    @Override
-    public List<String> getEmotionStringList() {
-        List<String> emotionList = new ArrayList<String>();
-        try {
-            int emojiSum = mEmojiAdapter.getCount();
-            for (int i = 0; i < emojiSum; i++) {
-                if (mEmojiAdapter.getItem(i) != null) {
-                    emotionList.add(mEmojiAdapter.getItem(i));
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return emotionList;
-    }
-
-    @Override
-    public void onTimeOver() {
-        if (mPresenter != null) {
-            mPresenter.doRecordStop(false);
-        }
-        initAduioPannel();
-    }
-
-    @Override
-    public void readyToCancelRecord() {
-
-        try {
-            setHorVoiceViewVis(View.GONE);
-            setAudiotipsVis(View.VISIBLE);
-            setAudiotiptext(getString(R.string.udesk_voice_cancle));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void doCancelRecord() {
-        try {
-            if (mPresenter != null) {
-                mPresenter.doRecordStop(true);
-
-            }
-            if (mHorVoiceView != null) {
-                mHorVoiceView.stopRecording();
-            }
-            initAduioPannel();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void readyToContinue() {
-        try {
-            setHorVoiceViewVis(View.VISIBLE);
-            setAudiotipsVis(View.GONE);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    @Override
-    public void endRecord() {
-        try {
-            if (mPresenter != null) {
-                mPresenter.doRecordStop(false);
-            }
-            if (mHorVoiceView != null) {
-                mHorVoiceView.stopRecording();
-            }
-            initAduioPannel();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    @Override
-    public void onRecordSuccess(String filePath, long duration) {
-        if (mPresenter != null) {
-            mPresenter.sendRecordAudioMsg(filePath, duration);
-        }
-    }
-
-    @Override
     public String getAgentId() {
+        if (TextUtils.isEmpty(agentId)) {
+            return PreferenceHelper.readString(this, UdeskConst.SharePreParams.Udesk_Sharepre_Name,
+                    UdeskConst.SharePreParams.Udesk_Agent_Id);
+        }
         return agentId;
     }
 
 
     @Override
     public String getGroupId() {
+        if (TextUtils.isEmpty(groupId)) {
+            return PreferenceHelper.readString(this, UdeskConst.SharePreParams.Udesk_Sharepre_Name,
+                    UdeskConst.SharePreParams.Udesk_Group_Id);
+        }
         return groupId;
     }
 
@@ -1740,18 +2585,12 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
     @Override
     public void setIsPermmitSurvy(boolean isPermmit) {
         try {
-            if (btnsurvy != null) {
-                if (isPermmit) {
-                    btnsurvy.setOnClickListener(this);
-                } else {
-                    btnsurvy.setOnClickListener(null);
-                }
-            }
             isPermmitSurvy = isPermmit;
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 
     private void registerNetWorkReceiver() {
         try {
@@ -1782,11 +2621,11 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
     public void showStartOrStopAnaimaition(final MessageInfo info,
                                            final boolean isstart) {
-        try {
-            runOnUiThread(new Runnable() {
+        runOnUiThread(new Runnable() {
 
-                @Override
-                public void run() {
+            @Override
+            public void run() {
+                try {
                     if (info == null) {
                         return;
                     }
@@ -1800,8 +2639,6 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         MessageInfo msgTemp = holder.message;
                         holder.endAnimationDrawable();
                         if (msgTemp != info) {
-                            msgTemp = info;
-                            continue;
                         } else {
                             if (isstart) {
                                 holder.startAnimationDrawable();
@@ -1812,12 +2649,13 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                         }
 
                     }
-
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
+            }
+        });
+
 
     }
 
@@ -1868,6 +2706,10 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                 };
 
             }
+            if ((TextUtils.isEmpty(message.getLocalPath()) || !UdeskUtils.isExitFileByPath(message.getLocalPath()))
+                    && !UdeskUtils.fileIsExitByUrl(UdeskChatActivity.this.getApplicationContext(), UdeskConst.FileAduio, message.getMsgContent())) {
+                mPresenter.downAudio(message);
+            }
             mRecordFilePlay.click(message, mPlayCallback);
         } catch (Exception e) {
             e.printStackTrace();
@@ -1891,15 +2733,6 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
-    private void updateRecordStatus(int status) {
-        try {
-            if (mHorVoiceView != null) {
-                mHorVoiceView.addElement(status * 10);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     //复制文本消息
     public void handleText(final MessageInfo message, View targetView) {
@@ -1941,15 +2774,62 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
     //发送广告的连接地址消息
     public void sentLink(String linkMsg) {
-        if (mPresenter != null) {
-            mPresenter.sendTxtMessage(linkMsg);
+        try {
+            if (!UdeskUtils.isNetworkConnected(this)) {
+                UdeskUtils.showToast(this,
+                        getResources().getString(R.string.udesk_has_wrong_net));
+                return;
+            }
+            if (mPresenter != null) {
+                if (currentStatusIsOnline) {
+                    mPresenter.sendTxtMessage(linkMsg);
+                } else if (isPresessionStatus) {
+                    Toast.makeText(UdeskChatActivity.this,
+                            getResources().getString(R.string.udesk_agent_connecting),
+                            Toast.LENGTH_SHORT).show();
+                    mPresenter.sendTxtMessage(linkMsg);
+                } else if (UdeskSDKManager.getInstance().getImSetting() != null &&
+                        UdeskSDKManager.getInstance().getImSetting().getLeave_message_type().equals("msg")) {
+                    if (!isLeavingmsg) {
+                        mPresenter.addCustomerLeavMsg();
+                        isLeavingmsg = true;
+                    }
+                    mPresenter.sendLeaveMessage(linkMsg);
+                } else if (isNeedQueueMessageSave()) {
+                    if (isMoreTanSendCount()) {
+                        UdeskUtils.showToast(getApplicationContext(), getMoreThanSendTip());
+                        return;
+                    }
+                    //排队中需要保存消息
+                    mPresenter.sendTxtMessage(linkMsg);
+                } else {
+                    confirmToForm();
+                }
+
+            }
+        } catch (Resources.NotFoundException e) {
+            e.printStackTrace();
         }
 
     }
 
-    //重试发送消息
+    //重试发送消息(无消息对话过滤状态，排队，在线)
     public void retrySendMsg(MessageInfo message) {
         try {
+            if (!UdeskUtils.isNetworkConnected(this)) {
+                UdeskUtils.showToast(this,
+                        getResources().getString(R.string.udesk_has_wrong_net));
+                return;
+            }
+            if (isMoreTanSendCount() && isNeedQueueMessageSave()) {
+                UdeskUtils.showToast(getApplicationContext(), getMoreThanSendTip());
+                return;
+            }
+            //不在无消息对话过滤状态，也不在排队，也不是在线情况下 提示客服
+            if (!isPresessionStatus && !currentStatusIsOnline && !isInTheQueue) {
+                UdeskUtils.showToast(getApplicationContext(), getResources().getString(R.string.udesk_label_customer_offline));
+                return;
+            }
             if (mPresenter != null && message != null) {
                 changeImState(message.getMsgId(), UdeskConst.SendFlag.RESULT_RETRY);
                 mPresenter.startRetryMsg(message);
@@ -1959,9 +2839,25 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
+    //取消上传视频消息
+    public void cancleSendVideoMsg(MessageInfo message) {
+        try {
+            if (mPresenter != null && message != null) {
+                mPresenter.cancleUploadFile(message);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     //下载文件
     public void downLoadMsg(MessageInfo message) {
         try {
+            if (!UdeskUtils.isNetworkConnected(this)) {
+                UdeskUtils.showToast(this,
+                        getResources().getString(R.string.udesk_has_wrong_net));
+                return;
+            }
             if (mPresenter != null && message != null) {
                 if (UdeskUtil.isGpsNet(getApplicationContext())) {
                     toGpsNetView(false, message, null);
@@ -1974,30 +2870,28 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
-    private void bottomoPannelBegginStatus() {
+    public synchronized void downLoadVideo(MessageInfo message) {
         try {
-            UdeskUtils.hideSoftKeyboard(this, mInputEditView);
-            setUdeskAudioPanelVis(View.GONE);
-            setUdeskEmojisPannel(View.GONE);
-            emjoGridView.setVisibility(View.GONE);
+            if (!UdeskUtils.isNetworkConnected(this)) {
+                UdeskUtils.showToast(this,
+                        getResources().getString(R.string.udesk_has_wrong_net));
+                return;
+            }
+            if (mPresenter != null && message != null) {
+                mPresenter.downVideo(message);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void initAduioPannel() {
+
+    private void bottomoPannelBegginStatus() {
         try {
-            setUdeskAudioPanelVis(View.VISIBLE);
-            setHorVoiceViewVis(View.GONE);
-            setAudioCancleViewVis(View.GONE);
-            setAudiotipsVis(View.VISIBLE);
-            setAudiotiptext(getString(R.string.udesk_voice_init));
-            audioPop.setOnLongClickListener(this);
-            audioPop.setOnTouchListener(null);
+            mEmotionKeyboard.hideSoftInput();
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     /**
@@ -2012,68 +2906,27 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                     mTitlebar.getudeskStateImg().setImageResource(R.drawable.udesk_online_status);
                 } else if (status.equals("off")) {
                     mTitlebar.getudeskStateImg().setImageResource(R.drawable.udesk_offline_status);
+                } else if (status.equals("queue")) {
+                    mTitlebar.getudeskStateImg().setImageResource(R.drawable.udesk_queue_status);
                 }
 
+                mTitlebar.setOnTouchListener(new View.OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View view, MotionEvent motionEvent) {
+                        if (mBotomFramlayout.isShown()) {
+                            if (mEmotionKeyboard != null) {
+                                mEmotionKeyboard.interceptBackPress();
+                            }
+                        } else {
+                            if (mEmotionKeyboard != null) {
+                                mEmotionKeyboard.hideSoftInput();
+                            }
+                        }
+                        return false;
+                    }
+                });
+
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setUdeskAudioPanelVis(int vis) {
-        try {
-            audioPanel.setVisibility(vis);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setHorVoiceViewVis(int vis) {
-        try {
-            mHorVoiceView.setVisibility(vis);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setAudiotipsVis(int vis) {
-        try {
-            udesk_audio_tips.setVisibility(vis);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setAudioCancleViewVis(int vis) {
-        try {
-            audioCancle.setVisibility(vis);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setAudiotiptext(String s) {
-        try {
-            udesk_audio_tips.setText(s);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setUdeskEmojisPannel(int vis) {
-        try {
-            emojisPannel.setVisibility(vis);
-            emjoGridView.setVisibility(View.VISIBLE);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setUdeskEditClickabled(EditText editText) {
-        try {
-            editText.setFocusable(true);
-            editText.setFocusableInTouchMode(true);
-            editText.requestFocus();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -2091,51 +2944,40 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
                                 R.string.udesk_close_chart), "off");
                     }
                 });
+                isMoreThan20 = false;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    protected void onPause() {
-
-        try {
-            if (mPresenter != null) {
-                mPresenter.unbindReqsurveyMsg();
-            }
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    UdeskDBManager.getInstance().updateAllMsgRead();
-                }
-            }).start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        super.onPause();
-    }
-
-    @Override
-    protected void onStop() {
-
-        recycleVoiceRes();
-
-        super.onStop();
-    }
 
     @Override
     public void onBackPressed() {
-        finishAcitivty();
+        try {
+            if (mEmotionlayout.isShown() || mMoreLayout.isShown()) {
+                mEmotionKeyboard.interceptBackPress();
+            } else {
+                finishAcitivty();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
     private void finishAcitivty() {
         //后台勾选开启后，对于同一个对话，用户多次进入，点击返回离开，若没有进行过满意度调查，
-        // 则返回点击后均弹出满意度调查窗口，若已经有满意度调查结果，则返回不再发起调查
+        // 则返回点击后均弹出满意度调查窗口，若已经有满意度调查结果，则返回不再发起调查都关闭.
+
+        if (!isFirstFinish) {
+            finish();
+            return;
+        }
+        isFirstFinish = false;
         try {
             SDKIMSetting imsetting = UdeskSDKManager.getInstance().getImSetting();
-            if (imsetting == null || !imsetting.isInvestigation_when_leave() || !imsetting.getEnable_im_survey()) {
+            if (!currentStatusIsOnline || imsetting == null || !imsetting.isInvestigation_when_leave() || !imsetting.getEnable_im_survey()) {
                 finish();
             } else if (mPresenter != null && mAgentInfo != null && !TextUtils.isEmpty(mAgentInfo.getAgent_id())) {
                 mPresenter.getHasSurvey(mAgentInfo.getAgent_id(), new ChatActivityPresenter.IUdeskHasSurvyCallBack() {
@@ -2156,21 +2998,41 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
 
     //设置会话时的语音图片等按钮的显隐藏
     private void setUdeskImContainerVis(int vis) {
-        if (udeskImContainer != null) {
-            udeskImContainer.setVisibility(vis);
+        try {
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseVoice) {
+                mAudioImg.setVisibility(vis);
+                if (vis == View.GONE) {
+                    mInputEditView.setVisibility(View.VISIBLE);
+                    mBtnAudio.setVisibility(View.GONE);
+                }
+            }
+            showEmoji();
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseMore) {
+                mMoreImg.setVisibility(vis);
+                if (vis == View.GONE) {
+                    hideMoreLayout();
+                }
+            }
+            if (UdeskSDKManager.getInstance().getUdeskConfig().isUseNavigationRootView) {
+                navigationRootView.setVisibility(vis);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     private boolean isleaveMessageTypeMsg() {
-        SDKIMSetting sdkimSetting = UdeskSDKManager.getInstance().getImSetting();
-        if (sdkimSetting != null && sdkimSetting.getLeave_message_type().equals("msg")) {
-            return true;
+        try {
+            SDKIMSetting sdkimSetting = UdeskSDKManager.getInstance().getImSetting();
+            return sdkimSetting != null && sdkimSetting.getEnable_web_im_feedback() && sdkimSetting.getLeave_message_type().equals("msg");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return false;
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         try {
             XPermissionUtils.onRequestPermissionsResult(this, requestCode, permissions, grantResults);
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -2179,36 +3041,283 @@ public class UdeskChatActivity extends Activity implements IChatActivityView,
         }
     }
 
-    @Override
-    protected void onDestroy() {
+
+    public void showVideoThumbnail(final MessageInfo info) {
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Bitmap bitmap = UdeskUtil.getVideoThumbnail(info.getMsgContent());
+                    if (bitmap != null) {
+                        UdeskUtils.saveBitmap(UdeskChatActivity.this.getApplicationContext(), info.getMsgContent(), bitmap);
+                        Message message = getHandler().obtainMessage(
+                                MessageWhat.ChangeVideoThumbnail);
+                        message.obj = info.getMsgId();
+                        getHandler().sendMessage(message);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+
+
+    }
+
+    public void pullByJumpOrder(int seqNUm, String imSessionId) {
+        if (mPresenter != null) {
+            mPresenter.pullMessages(seqNUm, imSessionId);
+        }
+    }
+
+    public void sendVideoMessage() {
+
         try {
-            if (mHandler != null && myRunnable != null) {
-                mHandler.removeCallbacks(myRunnable);
+            SDKIMSetting sdkimSetting = UdeskSDKManager.getInstance().getImSetting();
+            if (sdkimSetting != null && mAgentInfo != null && isOpenVideo()) {
+                //分配到客服后。建立websocket连接
+                String domain = UdeskSDKManager.getInstance().getDomain(getApplicationContext());
+                String[] domains = domain.split("\\.");
+                if (domains.length > 0) {
+                    domain = domains[0];
+                }
+                if (!TextUtils.isEmpty(mAgentInfo.getIm_sub_session_id())) {
+                    UdeskConst.IMBusseniessId = mAgentInfo.getIm_sub_session_id();
+                }
+                if (!TextUtils.isEmpty(mAgentInfo.getAgentJid())) {
+                    UdeskConst.IMAgentJid = mAgentInfo.getAgentJid();
+                }
+                if (!TextUtils.isEmpty(mAgentInfo.getAgentNick())) {
+                    UdeskConst.IMAgentName = mAgentInfo.getAgentNick();
+                }
+                if (!TextUtils.isEmpty(XmppInfo.getInstance().getLoginName())) {
+                    UdeskConst.IMCustomerJid = XmppInfo.getInstance().getLoginName();
+                }
+                if (!TextUtils.isEmpty(sdkimSetting.getVc_app_id())) {
+                    UdeskConst.vc_app_id = sdkimSetting.getVc_app_id();
+                }
+                if (!TextUtils.isEmpty(sdkimSetting.getAgora_app_id())) {
+                    UdeskConst.agora_app_id = sdkimSetting.getAgora_app_id();
+                }
+                if (!TextUtils.isEmpty(sdkimSetting.getServer_url())) {
+                    UdeskConst.server_url = sdkimSetting.getServer_url();
+                }
+
+                if (!TextUtils.isEmpty(sdkimSetting.getVcall_token_url())) {
+                    UdeskConst.signToenUrl = sdkimSetting.getVcall_token_url();
+                }
+                if (!TextUtils.isEmpty(domain)) {
+                    UdeskConst.Subdomain = domain;
+                }
+
+                InvokeEventContainer.getInstance().event_OnConnectWebsocket.invoke(getApplicationContext());
             }
-            //设置了开启推送标识，离开会话界面开启推送，
-            if (!TextUtils.isEmpty(UdeskSDKManager.getInstance().getRegisterId(UdeskChatActivity.this)) && UdeskConfig.isUserSDkPush) {
-                UdeskSDKManager.getInstance().setSdkPushStatus(UdeskSDKManager.getInstance().getDomain(this),
-                        UdeskSDKManager.getInstance().getAppkey(this), UdeskBaseInfo.sdkToken, UdeskConfig.UdeskPushFlag.ON,
-                        UdeskSDKManager.getInstance().getRegisterId(UdeskChatActivity.this), UdeskSDKManager.getInstance().getAppId(this));
-            }
-            if (mPresenter != null) {
-                mPresenter.quitQuenu();
-            }
-            UdeskBaseInfo.isNeedMsgNotice = true;
-            hasSendCommodity = false;
-            unRegister();
-            UdeskHttpFacade.getInstance().cancel();
-            if (mPresenter != null) {
-                mPresenter.unBind();
-                mPresenter.removeCallBack();
-                mPresenter = null;
-            }
-            InvokeEventContainer.getInstance().event_IsOver.unBind(this);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public ChatActivityPresenter getmPresenter() {
+        return mPresenter;
+    }
+
+    private void addNavigationFragment() {
+        try {
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            transaction.replace(R.id.fragment_view, new NavigationFragment());
+            transaction.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+
+        try {
+            UdeskBaseInfo.isNeedMsgNotice = true;
+            if (mPresenter != null) {
+                mPresenter.unbindReqsurveyMsg();
+            }
+            //失去焦点 就启动
+            MessageCache.getInstance().putAll(mPresenter.getSendingMsgCache(), getApplicationContext());
+            if (isFinishing()) {
+                cleanSource();
+            } else {
+                UdeskConst.sdk_page_status = UdeskConst.SDK_PAGE_BACKGROUND;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+
+        recycleVoiceRes();
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        cleanSource();
         super.onDestroy();
 
     }
 
+    private static class MyUpdateMsgRead extends Thread {
+
+        @Override
+        public void run() {
+            try {
+                UdeskDBManager.getInstance().updateAllMsgRead();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        try {
+            if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+                View v = getCurrentFocus();
+                if (isShouldHideKeyboard(v, ev)) {
+                    hideKeyboard(v.getWindowToken());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    private void hideKeyboard(IBinder token) {
+        try {
+            if (token != null) {
+                InputMethodManager im = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                im.hideSoftInputFromWindow(token, InputMethodManager.HIDE_NOT_ALWAYS);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 根据EditText所在坐标和用户点击的坐标相对比，来判断是否隐藏键盘，因为当用户点击EditText时则不能隐藏
+     *
+     * @param v
+     * @param event
+     * @return
+     */
+    private boolean isShouldHideKeyboard(View v, MotionEvent event) {
+        try {
+            if (v != null && (v instanceof EditText)) {
+                int[] l = {0, 0};
+                v.getLocationInWindow(l);
+                int left = l[0],
+                        top = l[1],
+                        bottom = top + v.getHeight(),
+                        right = left + v.getWidth();
+                if (event.getY() > top) {
+                    // 点击EditText的事件，忽略它。
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // 如果焦点不是EditText则忽略，这个发生在视图刚绘制完，第一个焦点不在EditText上，和用户用轨迹球选择其他的焦点
+        return false;
+    }
+
+    @Override
+    public boolean isNeedQueueMessageSave() {
+        return isInTheQueue && UdeskSDKManager.getInstance().getEnableSendMessageWhenQueue();
+    }
+
+    String moreThanStirng;
+
+    @Override
+    public void isMoreThan(boolean isMore, String msg) {
+
+        try {
+            isMoreThan20 = isMore;
+            moreThanStirng = msg;
+            this.runOnUiThread(new Runnable() {
+
+                @Override
+                public void run() {
+                    UdeskUtils.showToast(UdeskChatActivity.this, getMoreThanSendTip());
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public boolean isMoreTanSendCount() {
+        return isMoreThan20;
+    }
+
+    public String getMoreThanSendTip() {
+
+        return TextUtils.isEmpty(moreThanStirng) ? getResources().getString(R.string.udesk_in_the_line_max_send) : moreThanStirng;
+    }
+
+    private void cleanSource() {
+        if (isDestroyed) {
+            return;
+        }
+        // 回收资源
+        UdeskConst.sdk_page_status = UdeskConst.SDK_PAGE_FINISH;
+        isDestroyed = true;
+        try {
+            if (popWindow != null && popWindow.isShowing()) {
+                popWindow.dismiss();
+            }
+            XPermissionUtils.destory();
+            functionItems.clear();
+            new MyUpdateMsgRead().start();
+            recycleVoiceRes();
+            if (mPresenter != null) {
+                mPresenter.clearMsg();
+                mPresenter.quitQuenu(UdeskSDKManager.getInstance().getUdeskConfig().UdeskQuenuMode);
+                mPresenter.unBind();
+                mPresenter.removeCallBack();
+                mPresenter = null;
+            }
+            if (mHandler != null && myRunnable != null) {
+                mHandler.removeCallbacks(myRunnable);
+            }
+            UdeskDBManager.getInstance().updateSendFlagToFail();
+            //设置了开启推送标识，离开会话界面开启推送，
+            if (!TextUtils.isEmpty(UdeskSDKManager.getInstance().getRegisterId(UdeskChatActivity.this)) && UdeskSDKManager.getInstance().getUdeskConfig().isUserSDkPush) {
+                UdeskSDKManager.getInstance().setSdkPushStatus(UdeskSDKManager.getInstance().getDomain(this),
+                        UdeskSDKManager.getInstance().getAppkey(this), UdeskSDKManager.getInstance().getSdkToken(getApplicationContext()), UdeskConfig.UdeskPushFlag.ON,
+                        UdeskSDKManager.getInstance().getRegisterId(UdeskChatActivity.this), UdeskSDKManager.getInstance().getAppId(this));
+            }
+            if (mEmotionKeyboard != null) {
+                mEmotionKeyboard.destory();
+                mEmotionKeyboard = null;
+            }
+            if (queueItem != null) {
+                queueItem = null;
+            }
+            if (mBtnAudio != null){
+                mBtnAudio.setRecordingListener(null);
+                mBtnAudio.destoryRelease();
+            }
+            XPermissionUtils.destory();
+            unRegister();
+            UdeskHttpFacade.getInstance().cancel();
+            InvokeEventContainer.getInstance().event_IsOver.unBind(this);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

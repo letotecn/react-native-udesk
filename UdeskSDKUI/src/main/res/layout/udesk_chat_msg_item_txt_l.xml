@@ -4,6 +4,7 @@
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
+    android:layoutDirection="ltr"
     android:paddingLeft="@dimen/udesk_chat_head_margin_left_or_right"
     android:paddingTop="@dimen/udesk_5">
 
@@ -26,8 +27,6 @@
         android:layout_marginTop="@dimen/udesk_chat_head_margin"
         fresco:actualImageScaleType="centerCrop"
         fresco:roundAsCircle="true"
-        fresco:roundingBorderColor="@color/udesk_color_line2"
-        fresco:roundingBorderWidth="1dp"
         fresco:placeholderImage="@drawable/udesk_im_default_agent_avatar"
         />
 
@@ -62,7 +61,7 @@
             android:layout_marginTop="@dimen/udesk_chat_head_margin"
             android:autoLink="phone|web"
             android:background="@drawable/udesk_im_item_bg_left"
-            android:gravity="left|center_vertical"
+            android:gravity="left|center"
             android:lineSpacingExtra="3dip"
             android:textColor="@color/udesk_color_im_text_left1"
             android:textColorLink="@color/udesk_color_im_text_left1"

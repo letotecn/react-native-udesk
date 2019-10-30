@@ -5,15 +5,14 @@ import android.util.Log;
 
 import java.util.concurrent.ExecutorService;
 
-import cn.udesk.UdeskConst;
-import cn.udesk.UdeskSDKManager;
 import cn.udesk.config.UdeskBaseInfo;
-import cn.udesk.config.UdeskConfig;
 import cn.udesk.db.UdeskDBManager;
 import cn.udesk.model.MsgNotice;
+import udesk.core.UdeskConst;
 import udesk.core.event.InvokeEventContainer;
 import udesk.core.event.ReflectInvokeMethod;
 import udesk.core.model.MessageInfo;
+import udesk.core.utils.UdeskUtils;
 import udesk.org.jivesoftware.smack.packet.Message;
 
 
@@ -22,7 +21,8 @@ public class UdeskMessageManager {
     private UdeskXmppManager mUdeskXmppManager;
     private ExecutorService messageExecutor;
     public ReflectInvokeMethod event_OnNewMessage = new ReflectInvokeMethod(new Class<?>[]{Message.class, String.class,
-            String.class, String.class, String.class, Long.class, String.class});
+            String.class, String.class, String.class, Long.class, String.class, String.class,
+            Integer.class, String.class, String.class, Long.class});
     public ReflectInvokeMethod eventui_OnMessageReceived = new ReflectInvokeMethod(new Class<?>[]{String.class});
     public ReflectInvokeMethod eventui_OnNewMessage = new ReflectInvokeMethod(new Class<?>[]{MessageInfo.class});
     public ReflectInvokeMethod eventui_OnNewPresence = new ReflectInvokeMethod(new Class<?>[]{String.class, Integer.class});
@@ -50,14 +50,22 @@ public class UdeskMessageManager {
         }
     }
 
+    public boolean isConnection() {
+        if (mUdeskXmppManager != null) {
+            return mUdeskXmppManager.isConnection();
+        }
+        return false;
+    }
+
     public void connection() {
         try {
-            Log.i("xxx","connection cancleXmpp");
             ensureMessageExecutor();
             messageExecutor.submit(new Runnable() {
                 @Override
                 public void run() {
                     if (mUdeskXmppManager != null) {
+                        UdeskUtils.resetTime();
+                        UdeskConst.sdk_xmpp_statea = UdeskConst.CONNECTING;
                         mUdeskXmppManager.cancel();
                         mUdeskXmppManager.startLoginXmpp();
                     }
@@ -68,17 +76,51 @@ public class UdeskMessageManager {
         }
     }
 
-
-    public void sendMessage(String type, String text, String msgId, String to, long duration, String subsessionId) {
-        mUdeskXmppManager.sendMessage(type, text, msgId, to, duration, subsessionId);
+    public void sendVCCallMessage(String type, String to, String text) {
+        mUdeskXmppManager.sendVCCallMessage(type, to, text);
     }
+
+    public void sendMessage(final MessageInfo messageInfo) {
+
+        try {
+            ensureMessageExecutor();
+            messageExecutor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    if (mUdeskXmppManager != null) {
+                        mUdeskXmppManager.sendMessage(messageInfo);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+//    public void sendMessage(String type, String text, String msgId, String to, long duration, String subsessionId, boolean noNeedSave, int seqNum, String fileName, String filesize) {
+//        mUdeskXmppManager.sendMessage(type, text, msgId, to, duration, subsessionId, noNeedSave, seqNum, fileName, filesize);
+//    }
 
     public void sendComodityMessage(String text, String to) {
         mUdeskXmppManager.sendComodityMessage(text, to);
     }
 
-    public void sendPreMsg(String type, String text, String to) {
-        mUdeskXmppManager.sendPreMessage(type, text, to);
+    public void sendPreMsg(final String type, final String text, final String to) {
+        //防止堵塞 导致anr 无须关注结果
+        try {
+            ensureMessageExecutor();
+            messageExecutor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    if (mUdeskXmppManager != null) {
+                        mUdeskXmppManager.sendPreMessage(type, text, to);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void bindEvent() {
@@ -97,7 +139,7 @@ public class UdeskMessageManager {
                 @Override
                 public void run() {
                     UdeskDBManager.getInstance().updateMsgSendFlag(msgId, UdeskConst.SendFlag.RESULT_SUCCESS);
-                    UdeskDBManager.getInstance().deleteSendingMsg(msgId);
+//                    UdeskDBManager.getInstance().deleteSendingMsg(msgId);
                     eventui_OnMessageReceived.invoke(msgId);
                 }
             });
@@ -108,7 +150,8 @@ public class UdeskMessageManager {
 
 
     public void onNewMessage(final Message message, String agentJid, final String type, final String msgId, final String content,
-                             final Long duration, final String send_status) {
+                             final Long duration, final String send_status, String imsessionId, Integer seqNum,
+                             String fileName, String fileSize, Long receiveMsgTime) {
         try {
             String jid[] = agentJid.split("/");
             MessageInfo msginfo = null;
@@ -120,16 +163,19 @@ public class UdeskMessageManager {
                     if (urlAndNick != null) {
                         agentName = urlAndNick[1];
                     }
-                    String buildrollBackMsg = "客服" + agentName + "撤回一条消息";
-                    msginfo = buildReceiveMessage(jid[0], UdeskConst.ChatMsgTypeString.TYPE_EVENT, msgId, buildrollBackMsg, duration, send_status);
+                    String buildrollBackMsg = agentName;
+                    msginfo = buildReceiveMessage(jid[0], UdeskConst.ChatMsgTypeString.TYPE_EVENT, msgId, buildrollBackMsg,
+                            duration, send_status, imsessionId, seqNum, fileName, fileSize, receiveMsgTime);
                 }
             } else {
-                msginfo = buildReceiveMessage(jid[0], type, msgId, content, duration, send_status);  //消息在本地数据库存在，则结束后续流程
+                //消息在本地数据库存在，则结束后续流程
                 if (UdeskDBManager.getInstance().hasReceviedMsg(msgId)) {
                     return;
                 }
-
+                msginfo = buildReceiveMessage(jid[0], type, msgId, content, duration, send_status,
+                        imsessionId, seqNum, fileName, fileSize, receiveMsgTime);
             }
+
             if (!type.equals(UdeskConst.ChatMsgTypeString.TYPE_REDIRECT)) {
                 boolean isSaveSuccess = UdeskDBManager.getInstance().addMessageInfo(msginfo);
                 if (isSaveSuccess) {
@@ -142,6 +188,9 @@ public class UdeskMessageManager {
                     mUdeskXmppManager.sendReceivedMsg(message);
                 }
             }
+            if (UdeskConst.isDebug && msginfo != null) {
+                Log.i("newMessage", msginfo.toString());
+            }
             eventui_OnNewMessage.invoke(msginfo);
             if (type.equals(UdeskConst.ChatMsgTypeString.TYPE_REDIRECT)) {
                 return;
@@ -149,9 +198,7 @@ public class UdeskMessageManager {
             if (UdeskBaseInfo.isNeedMsgNotice) {
                 MsgNotice msgNotice = new MsgNotice(msgId, type, content);
                 event_OnNewMsgNotice.invoke(msgNotice);
-                if (msgNotice != null && UdeskSDKManager.getInstance().getOnlineMessage() != null && !UdeskConfig.isUserSDkPush) {
-                    UdeskSDKManager.getInstance().getOnlineMessage().onlineMessageReceive(msgNotice);
-                }
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -160,20 +207,29 @@ public class UdeskMessageManager {
     }
 
     public MessageInfo buildReceiveMessage(String agentJid, String msgType, String msgId,
-                                           String content, long duration, String send_status) {
+                                           String content, long duration, String send_status,
+                                           String imsessionId, Integer seqNum, String fileName, String fileSize, Long receiveMsgTime) {
         MessageInfo msg = new MessageInfo();
-        msg.setMsgtype(msgType);
-        msg.setTime(System.currentTimeMillis());
-        msg.setMsgId(msgId);
-        msg.setDirection(UdeskConst.ChatMsgDirection.Recv);
-        msg.setSendFlag(UdeskConst.SendFlag.RESULT_SUCCESS);
-        msg.setReadFlag(UdeskConst.ChatMsgReadFlag.unread);
-        msg.setMsgContent(content);
-        msg.setPlayflag(UdeskConst.PlayFlag.NOPLAY);
-        msg.setLocalPath("");
-        msg.setDuration(duration);
-        msg.setmAgentJid(agentJid);
-        msg.setSend_status(send_status);
+        try {
+            msg.setMsgtype(msgType);
+            msg.setTime(receiveMsgTime);
+            msg.setMsgId(msgId);
+            msg.setDirection(UdeskConst.ChatMsgDirection.Recv);
+            msg.setSendFlag(UdeskConst.SendFlag.RESULT_SUCCESS);
+            msg.setReadFlag(UdeskConst.ChatMsgReadFlag.unread);
+            msg.setMsgContent(content);
+            msg.setPlayflag(UdeskConst.PlayFlag.NOPLAY);
+            msg.setLocalPath("");
+            msg.setDuration(duration);
+            msg.setmAgentJid(agentJid);
+            msg.setSend_status(send_status);
+            msg.setSubsessionid(imsessionId);
+            msg.setSeqNum(seqNum);
+            msg.setFilename(fileName);
+            msg.setFilesize(fileSize);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return msg;
     }
 
@@ -225,7 +281,8 @@ public class UdeskMessageManager {
 
     public void cancleXmpp() {
         try {
-            Log.i("xxx","UdeskMessageManager cancleXmpp");
+            UdeskUtils.resetTime();
+            UdeskConst.sdk_xmpp_statea = UdeskConst.CONNECTION_FAILED;
             ensureMessageExecutor();
             messageExecutor.submit(new Runnable() {
                 @Override
@@ -239,5 +296,6 @@ public class UdeskMessageManager {
             e.printStackTrace();
         }
     }
+
 
 }

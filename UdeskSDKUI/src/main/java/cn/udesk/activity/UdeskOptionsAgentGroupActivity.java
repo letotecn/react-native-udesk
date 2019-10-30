@@ -1,6 +1,5 @@
 package cn.udesk.activity;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -8,6 +7,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -17,21 +17,22 @@ import java.util.List;
 import cn.udesk.JsonUtils;
 import cn.udesk.R;
 import cn.udesk.UdeskSDKManager;
+import cn.udesk.UdeskUtil;
 import cn.udesk.adapter.OptionsAgentGroupAdapter;
 import cn.udesk.config.UdekConfigUtil;
-import cn.udesk.config.UdeskBaseInfo;
 import cn.udesk.config.UdeskConfig;
 import cn.udesk.model.AgentGroupNode;
 import cn.udesk.widget.UdeskDialog;
 import cn.udesk.widget.UdeskTitleBar;
 import udesk.core.UdeskCallBack;
+import udesk.core.UdeskConst;
 import udesk.core.UdeskHttpFacade;
 
 
 /**
  * 选择客服组
  */
-public class UdeskOptionsAgentGroupActivity extends Activity implements AdapterView.OnItemClickListener {
+public class UdeskOptionsAgentGroupActivity extends UdeskBaseActivity implements AdapterView.OnItemClickListener {
 
     private UdeskTitleBar mTitlebar;
     private TextView title;
@@ -46,9 +47,14 @@ public class UdeskOptionsAgentGroupActivity extends Activity implements AdapterV
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.udesk_options_agentgroup_view);
-        initView();
-        getImGroupInfo();
+        try {
+            UdeskUtil.setOrientation(this);
+            setContentView(R.layout.udesk_options_agentgroup_view);
+            initView();
+            getImGroupInfo();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void initView() {
@@ -97,10 +103,12 @@ public class UdeskOptionsAgentGroupActivity extends Activity implements AdapterV
                                     settingTitlebar();
                                     drawView(rootId);
                                 } else {
-                                    luanchChat();
+                                    Toast.makeText(UdeskOptionsAgentGroupActivity.this, UdeskOptionsAgentGroupActivity.this.getString(R.string.udesk_error), Toast.LENGTH_SHORT).show();
+                                    finish();
                                 }
                             } catch (Exception e) {
-                                luanchChat();
+                                Toast.makeText(UdeskOptionsAgentGroupActivity.this, UdeskOptionsAgentGroupActivity.this.getString(R.string.udesk_error), Toast.LENGTH_SHORT).show();
+                                finish();
                             }
 
                         }
@@ -108,7 +116,8 @@ public class UdeskOptionsAgentGroupActivity extends Activity implements AdapterV
                         @Override
                         public void onFail(String message) {
                             dismiss();
-                            luanchChat();
+                            Toast.makeText(UdeskOptionsAgentGroupActivity.this, UdeskOptionsAgentGroupActivity.this.getString(R.string.udesk_has_bad_net), Toast.LENGTH_SHORT).show();
+                            finish();
                         }
                     });
         } catch (Exception e) {
@@ -119,9 +128,9 @@ public class UdeskOptionsAgentGroupActivity extends Activity implements AdapterV
     //进入会话界面
     private void luanchChat() {
         try {
-            Intent intent = new Intent(UdeskOptionsAgentGroupActivity.this, UdeskChatActivity.class);
+            Intent intent = new Intent(getApplicationContext(), UdeskChatActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            UdeskOptionsAgentGroupActivity.this.startActivity(intent);
+            startActivity(intent);
             finish();
         } catch (Exception e) {
             e.printStackTrace();
@@ -135,10 +144,12 @@ public class UdeskOptionsAgentGroupActivity extends Activity implements AdapterV
 
         try {
             if (mTitlebar != null) {
-                UdekConfigUtil.setUITextColor(UdeskConfig.udeskTitlebarTextLeftRightResId,mTitlebar.getLeftTextView(),mTitlebar.getRightTextView());
-                UdekConfigUtil.setUIbgDrawable(UdeskConfig.udeskTitlebarBgResId ,mTitlebar.getRootView());
-                if (UdeskConfig.DEFAULT != UdeskConfig.udeskbackArrowIconResId) {
-                    mTitlebar.getUdeskBackImg().setImageResource(UdeskConfig.udeskbackArrowIconResId);
+                UdekConfigUtil.setUITextColor(UdeskSDKManager.getInstance().getUdeskConfig().udeskTitlebarTextLeftRightResId, mTitlebar.getLeftTextView(), mTitlebar.getRightTextView());
+                if (mTitlebar.getRootView() != null) {
+                    UdekConfigUtil.setUIbgDrawable(UdeskSDKManager.getInstance().getUdeskConfig().udeskTitlebarBgResId, mTitlebar.getRootView());
+                }
+                if (UdeskConfig.DEFAULT != UdeskSDKManager.getInstance().getUdeskConfig().udeskbackArrowIconResId) {
+                    mTitlebar.getUdeskBackImg().setImageResource(UdeskSDKManager.getInstance().getUdeskConfig().udeskbackArrowIconResId);
                 }
                 mTitlebar
                         .setLeftTextSequence(getString(R.string.udesk_options_agentgroup));
@@ -186,7 +197,10 @@ public class UdeskOptionsAgentGroupActivity extends Activity implements AdapterV
                 if (TextUtils.isEmpty(groupNode.getGroup_id())) {
                     drawView(groupNode.getId());
                 } else {
-                    UdeskSDKManager.getInstance().lanuchChatByGroupId(UdeskOptionsAgentGroupActivity.this, groupNode.getGroup_id());
+                    Intent intent = new Intent(getApplicationContext(), UdeskChatActivity.class);
+                    intent.putExtra(UdeskConst.UDESKGROUPID, groupNode.getGroup_id());
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
                     finish();
                 }
 

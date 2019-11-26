@@ -3162,6 +3162,7 @@ public class UdeskChatActivity extends UdeskBaseActivity implements IChatActivit
 
     @Override
     protected void onDestroy() {
+        UdeskSDKManager.getInstance().getUdeskConfig().iPageFinishCallBack.callBack();
         cleanSource();
         super.onDestroy();
 

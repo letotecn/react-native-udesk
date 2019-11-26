@@ -39,14 +39,17 @@ RCT_EXPORT_METHOD(updateCustomer:(NSDictionary *)usertInfo) {
     [UdeskManager updateCustomer:customer completion:nil];
 }
 
-RCT_EXPORT_METHOD(entryChat) {
+RCT_EXPORT_METHOD(entryChat:(RCTResponseSenderBlock)callback) {
+    UdeskSDKActionConfig *actionConfig = [UdeskSDKActionConfig new];
+    actionConfig.leaveUdeskSDKBlock = ^{
+        callback(nil);
+    };
     //使用push
-    UdeskSDKManager *chat = [[UdeskSDKManager alloc] initWithSDKStyle:[UdeskSDKStyle defaultStyle]];
+    UdeskSDKManager *chat = [[UdeskSDKManager alloc] initWithSDKStyle:[UdeskSDKStyle defaultStyle] sdkConfig:[UdeskSDKConfig customConfig] sdkActionConfig:actionConfig];
     
     //使用present
-    [chat presentUdeskInViewController: [UIApplication sharedApplication].keyWindow.rootViewController completion:nil];
+    [chat pushUdeskInViewController: [UIApplication sharedApplication].keyWindow.rootViewController completion:nil];
 }
-
 
 @end
 

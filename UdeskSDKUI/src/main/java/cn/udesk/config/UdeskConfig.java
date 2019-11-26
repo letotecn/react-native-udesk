@@ -8,6 +8,7 @@ import cn.udesk.R;
 import cn.udesk.callback.IFunctionItemClickCallBack;
 import cn.udesk.callback.ILocationMessageClickCallBack;
 import cn.udesk.callback.INavigationItemClickCallBack;
+import cn.udesk.callback.IPageFinishCallBack;
 import cn.udesk.callback.IProductMessageWebonCliclk;
 import cn.udesk.callback.ITxtMessageWebonCliclk;
 import cn.udesk.callback.IUdeskFormCallBack;
@@ -121,7 +122,8 @@ public class UdeskConfig {
     //设置结构化消息的回调接口
     public IUdeskStructMessageCallBack structMessageCallBack;
     //支持自定义功能按钮后 点击事件回调 和直接发送文本,图片,视频,文件,地理位置,商品信息  必须组合设置额外的自定义按钮
-    public IFunctionItemClickCallBack functionItemClickCallBack;
+    //Udesk页面关闭的回调
+    public IPageFinishCallBack iPageFinishCallBack;
     //设置额外的自定义功能按钮
     public List<FunctionMode> extreFunctions;
     //支持客户在导航处添加自定义按钮的点击回调事件   必须组合设置额外的自定义按钮
@@ -146,6 +148,7 @@ public class UdeskConfig {
     public Product mProduct;
     //SDK支持自定义渠道
     public String channel;
+    public   IFunctionItemClickCallBack  functionItemClickCallBack;
 
 
     UdeskConfig(Builder builder) {
@@ -197,6 +200,7 @@ public class UdeskConfig {
         this.productMessageClick = builder.productMessageClick;
         this.formCallBack = builder.formCallBack;
         this.structMessageCallBack = builder.structMessageCallBack;
+        this.iPageFinishCallBack=builder.iPageFinishCallBack;
         this.functionItemClickCallBack = builder.functionItemClickCallBack;
         this.extreFunctions = builder.extreFunctions;
         this.navigationItemClickCallBack = builder.navigationItemClickCallBack;
@@ -312,6 +316,7 @@ public class UdeskConfig {
         private IUdeskFormCallBack formCallBack;
         //设置结构化消息的回调接口
         private IUdeskStructMessageCallBack structMessageCallBack;
+        private IPageFinishCallBack iPageFinishCallBack;
         //支持自定义功能按钮后 点击事件回调 和直接发送文本,图片,视频,文件,地理位置,商品信息
         private IFunctionItemClickCallBack functionItemClickCallBack;
         //设置额外的功能按钮
@@ -731,6 +736,15 @@ public class UdeskConfig {
          */
         public Builder setStructMessageCallBack(IUdeskStructMessageCallBack structMessageCallBack) {
             this.structMessageCallBack = structMessageCallBack;
+            return this;
+        }
+
+        /**
+         * @param IPageFinishCallBack udeks页面关闭的回调接口.
+         * @return
+         */
+        public Builder setIPageFinishCallBack(IPageFinishCallBack iPageFinishCallBack) {
+            this.iPageFinishCallBack = iPageFinishCallBack;
             return this;
         }
 

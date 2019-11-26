@@ -2,6 +2,7 @@ package com.lenny.module.udesk;
 
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import cn.udesk.UdeskSDKManager;
+import cn.udesk.callback.IPageFinishCallBack;
 import cn.udesk.config.UdeskConfig;
 import udesk.core.UdeskConst;
 
@@ -47,7 +49,7 @@ class UdeskModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void setUserInfo(final ReadableMap options, final Callback callback) {
+    public void setUserInfo(final ReadableMap options,final Callback callback) {
         Map<String, String> info = new HashMap<>();
        this.token = options.getString("sdk_token");
         if (this.token == null) {
@@ -73,12 +75,19 @@ class UdeskModule extends ReactContextBaseJavaModule {
         info.put("TextField_84621", this.token);
         builder.setDefualtUserInfo(info);
         builder.setDefinedUserTextField(fields);
+
     }
     
 
     
     @ReactMethod
-    public void entryChat() {
+    public void entryChat(final Callback cback) {
+        builder.setIPageFinishCallBack( new IPageFinishCallBack(){
+            @Override
+            public void callBack() {
+                cback.invoke();
+            }
+        });
         UdeskSDKManager.getInstance().entryChat(mReactContext.getApplicationContext(),builder.build(),this.token);
     }
 

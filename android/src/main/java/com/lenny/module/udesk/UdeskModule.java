@@ -30,6 +30,7 @@ class UdeskModule extends ReactContextBaseJavaModule {
     private ReactApplicationContext mReactContext;
     UdeskConfig.Builder builder = new UdeskConfig.Builder();
     String token;
+    private boolean isInvokeCallBack = false;
     public UdeskModule(ReactApplicationContext reactContext) {
         super(reactContext);
         mReactContext = reactContext;
@@ -82,10 +83,15 @@ class UdeskModule extends ReactContextBaseJavaModule {
     
     @ReactMethod
     public void entryChat(final Callback cback) {
-        builder.setIPageFinishCallBack( new IPageFinishCallBack(){
+        this.isInvokeCallBack=false;
+        builder.setIPageFinishCallBack(new IPageFinishCallBack(){
             @Override
             public void callBack() {
-                cback.invoke();
+                if(!UdeskModule.this.isInvokeCallBack){
+                    if(cback!=null)cback.invoke();
+                    UdeskModule.this.isInvokeCallBack=true;
+                }
+
             }
         });
         UdeskSDKManager.getInstance().entryChat(mReactContext.getApplicationContext(),builder.build(),this.token);

@@ -1,6 +1,6 @@
 package com.lenny.module.udesk;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.text.TextUtils;
 import android.widget.Toast;
 
@@ -50,7 +50,7 @@ class UdeskModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void setUserInfo(final ReadableMap options,final Callback callback) {
+    public void updateCustomer(final ReadableMap options) {
         Map<String, String> info = new HashMap<>();
        this.token = options.getString("sdk_token");
         if (this.token == null) {
@@ -59,8 +59,8 @@ class UdeskModule extends ReactContextBaseJavaModule {
         //token 必填
         info.put(UdeskConst.UdeskUserInfo.USER_SDK_TOKEN, token);
         //以下信息是可选
-        if (hasAndNotEmpty(options, "nick_name")) {
-            info.put(UdeskConst.UdeskUserInfo.NICK_NAME, options.getString("nick_name"));
+        if (hasAndNotEmpty(options, "nickname")) {
+            info.put(UdeskConst.UdeskUserInfo.NICK_NAME, options.getString("nickname"));
         }
         if (hasAndNotEmpty(options, "email")) {
             info.put(UdeskConst.UdeskUserInfo.EMAIL, options.getString("email"));
@@ -73,7 +73,11 @@ class UdeskModule extends ReactContextBaseJavaModule {
         }
 
         Map<String, String> fields = new HashMap<>();
+
         info.put("TextField_84621", this.token);
+
+        info.put(UdeskConst.UdeskUserInfo.CUSTOMER_TOKEN, this.token);
+
         builder.setDefualtUserInfo(info);
         builder.setDefinedUserTextField(fields);
 

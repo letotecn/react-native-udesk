@@ -19,10 +19,11 @@ RCT_EXPORT_METHOD(initUdeskManager:(NSString *)domain appKey:(NSString *)appKey 
     UdeskCustomer *customer = [UdeskCustomer new];
     UdeskCustomerCustomField *textField = [UdeskCustomerCustomField new];
     textField.fieldKey = @"TextField_84621";
-    textField.fieldValue = usertInfo[@"id"];
+    textField.fieldValue = usertInfo[@"sdk_token"];
     customer.customField = @[textField];
-    customer.sdkToken = usertInfo[@"id"];
+    customer.sdkToken = usertInfo[@"sdk_token"];
     customer.nickName = usertInfo[@"nickname"];
+    customer.customerToken = usertInfo[@"sdk_token"];
     //初始化sdk
     [UdeskManager initWithOrganization:organization customer:customer];
 }
@@ -32,10 +33,11 @@ RCT_EXPORT_METHOD(updateCustomer:(NSDictionary *)usertInfo) {
     //客户自定义字段（非必填）
     UdeskCustomerCustomField *textField = [UdeskCustomerCustomField new];
     textField.fieldKey = @"TextField_84621";
-    textField.fieldValue = usertInfo[@"id"];
+    textField.fieldValue = usertInfo[@"sdk_token"];
     customer.customField = @[textField];
-    customer.sdkToken = usertInfo[@"id"];
+    customer.sdkToken = usertInfo[@"sdk_token"];
     customer.nickName = usertInfo[@"nickname"];
+    customer.customerToken = usertInfo[@"sdk_token"];
     [UdeskManager updateCustomer:customer completion:nil];
 }
 

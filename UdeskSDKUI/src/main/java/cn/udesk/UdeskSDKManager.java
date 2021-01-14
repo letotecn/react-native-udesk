@@ -182,7 +182,7 @@ public class UdeskSDKManager {
             initDB(context, sdkToken);
             PreferenceHelper.write(context, UdeskConst.SharePreParams.Udesk_Sharepre_Name,
                     UdeskConst.SharePreParams.Udesk_SdkToken, sdkToken);
-            UdeskUtil.initCrashReport(context);
+//            UdeskUtil.initCrashReport(context);
             getSDKImSetting(context);
         } catch (Exception e) {
             e.printStackTrace();

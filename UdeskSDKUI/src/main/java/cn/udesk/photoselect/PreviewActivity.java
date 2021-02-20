@@ -93,6 +93,10 @@ public class PreviewActivity extends AppCompatActivity implements PreviewPhotosA
         index = intent.getIntExtra(UdeskConst.PREVIEW_PHOTO_INDEX, 0);
         isPreviewAll = intent.getBooleanExtra(UdeskConst.PREVIEW_PHOTO_IS_ALL, true);
         lastPosition = index;
+        //修复数组position==-1 崩溃的问题
+        if(lastPosition < 0){
+           lastPosition = 0;
+        }
     }
 
     private void initView() {
@@ -174,6 +178,10 @@ public class PreviewActivity extends AppCompatActivity implements PreviewPhotosA
                             return;
                         }
                         lastPosition = leftViewPosition - 1;
+                        //修复数组position==-1 崩溃的问题
+                        if(lastPosition < 0){
+                           lastPosition = 0;
+                        }
                         setIndexNum(leftViewPosition);
                         previewFragment.setSelectedPosition(-1);
                         toggleSelector();

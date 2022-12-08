@@ -86,13 +86,7 @@ public class UdeskWebChromeClient extends WebChromeClient {
 
     }
 
-    @Override
-    //扩容
-    public void onReachedMaxAppCacheSize(long requiredStorage, long quota, WebStorage.QuotaUpdater quotaUpdater) {
-        quotaUpdater.updateQuota(requiredStorage*2);
-    }
-
-//    @Override
+    //    @Override
 //    public void onConsoleMessage(String message, int lineNumber, String sourceID) {
 //        Log.e("h5log", String.format("%s -- From line %s of %s", message, lineNumber, sourceID));
 //    }

@@ -1096,6 +1096,8 @@ public class UdeskUtil {
                 retriever.release();
             } catch (RuntimeException e) {
                 e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
         return bitmap;

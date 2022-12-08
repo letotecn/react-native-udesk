@@ -1,15 +1,10 @@
 package cn.udesk.photoselect;
 
-import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -17,12 +12,14 @@ import android.widget.MediaController;
 import android.widget.ProgressBar;
 import android.widget.VideoView;
 
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.facebook.drawee.view.SimpleDraweeView;
 
 import java.io.File;
 
 import cn.udesk.R;
-import cn.udesk.UdeskSDKManager;
 import cn.udesk.UdeskUtil;
 import udesk.core.UdeskConst;
 import udesk.core.utils.UdeskUtils;

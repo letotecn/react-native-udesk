@@ -4,8 +4,6 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.StateListDrawable;
-import android.support.annotation.Nullable;
-import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
@@ -14,6 +12,9 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+
+import androidx.annotation.Nullable;
+import androidx.viewpager.widget.ViewPager;
 
 import java.util.List;
 

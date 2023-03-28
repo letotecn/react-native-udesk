@@ -2,7 +2,6 @@ package com.lenny.module.udesk;
 
 import androidx.annotation.NonNull;
 import android.text.TextUtils;
-import android.widget.Toast;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
@@ -16,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import cn.udesk.UdeskSDKManager;
-import cn.udesk.callback.IPageFinishCallBack;
+import cn.udesk.callback.ILeaveChatViewCallBack;
 import cn.udesk.config.UdeskConfig;
 import udesk.core.UdeskConst;
 
@@ -78,7 +77,7 @@ class UdeskModule extends ReactContextBaseJavaModule {
 
         info.put(UdeskConst.UdeskUserInfo.CUSTOMER_TOKEN, this.token);
 
-        builder.setDefualtUserInfo(info);
+        builder.setDefaultUserInfo(info);
         builder.setDefinedUserTextField(fields);
 
     }
@@ -88,16 +87,18 @@ class UdeskModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void entryChat(final Callback cback) {
         this.isInvokeCallBack=false;
-        builder.setIPageFinishCallBack(new IPageFinishCallBack(){
-            @Override
-            public void callBack() {
-                if(!UdeskModule.this.isInvokeCallBack){
-                    if(cback!=null)cback.invoke();
-                    UdeskModule.this.isInvokeCallBack=true;
-                }
 
-            }
-        });
+        builder.setLeaveChatViewCallBack(new ILeaveChatViewCallBack() {
+
+             @Override
+             public void callBack() {
+                 if(!UdeskModule.this.isInvokeCallBack){
+                     if(cback!=null)cback.invoke();
+                     UdeskModule.this.isInvokeCallBack=true;
+                 }
+             }
+         });
+
         UdeskSDKManager.getInstance().entryChat(mReactContext.getApplicationContext(),builder.build(),this.token);
     }
 

@@ -41,18 +41,6 @@ RCT_EXPORT_METHOD(initUdeskManager:(NSString *)domain appKey:(NSString *)appKey 
 }
 
 RCT_EXPORT_METHOD(updateCustomer:(NSDictionary *)usertInfo) {
-    UdeskCustomer *customer = [UdeskCustomer new];
-
-    customer.sdkToken = usertInfo[@"sdk_token"];
-    customer.nickName = usertInfo[@"nickname"];
-    customer.customerToken = usertInfo[@"sdk_token"];
-
-    UdeskCustomerCustomField *textField = [UdeskCustomerCustomField new];
-    textField.fieldKey = @"TextField_84621";
-    textField.fieldValue = usertInfo[@"sdk_token"];
-
-    customer.customField = @[textField];
-
 //    [UdeskManager updateCustomer:customer completion:nil];
 }
 
@@ -71,4 +59,3 @@ RCT_EXPORT_METHOD(entryChat:(RCTResponseSenderBlock)callback) {
 }
 
 @end
-

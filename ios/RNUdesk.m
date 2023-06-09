@@ -11,6 +11,8 @@
 RCT_EXPORT_MODULE()
 
 RCT_EXPORT_METHOD(initUdeskManager:(NSString *)domain appKey:(NSString *)appKey appId:(NSString *)appId customer:(NSDictionary *)usertInfo) {
+    [UdeskManager logoutUdesk];
+    
     //初始化公司（appKey、appID、domain都是必传字段）
     UdeskOrganization *organization = [[UdeskOrganization alloc] initWithDomain:domain appKey:appKey appId:appId];
 
